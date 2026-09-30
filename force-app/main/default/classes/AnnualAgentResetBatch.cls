@@ -31,6 +31,7 @@ public with sharing class AnnualAgentResetBatch implements Database.Batchable<SO
         if(!accountsToUpdate.isEmpty()){
             update accountsToUpdate;
         }
+        
 
     }
 
