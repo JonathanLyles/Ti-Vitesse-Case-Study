@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Case_must_have_an_agent</fullName>
+    <active>true</active>
+    <description
+  >This validation rule checks if a case has an agent and prevents a case to be saved without one.</description>
+    <errorConditionFormula>AND(
+    ISBLANK( AccountId ),
+    ISBLANK( Contact.AccountId )
+)</errorConditionFormula>
+    <errorMessage
+  >The case cannot be created or saved without an agent</errorMessage>
+</ValidationRule>

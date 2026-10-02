@@ -1,0 +1,11 @@
+{
+  "apiName": "Vehicle__c",
+  "defaultRecordTypeId": "012000000000000AAA",
+  "fields": {
+    "Make__c": { "label": "Make" },
+    "Model__c": { "label": "Model" },
+    "Registration_number__c": { "label": "Registration number" },
+    "Mileage__c": { "label": "Mileage" },
+    "Engine_Capacity__c": { "label": "Engine Capacity" }
+  }
+}

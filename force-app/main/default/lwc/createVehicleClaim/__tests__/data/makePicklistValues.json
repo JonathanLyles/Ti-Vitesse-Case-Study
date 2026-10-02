@@ -1,0 +1,12 @@
+{
+  "defaultValue": null,
+  "values": [
+    { "label": "Ford", "value": "Ford", "attributes": null, "validFor": [] },
+    {
+      "label": "Volkswagen",
+      "value": "Volkswagen",
+      "attributes": null,
+      "validFor": []
+    }
+  ]
+}

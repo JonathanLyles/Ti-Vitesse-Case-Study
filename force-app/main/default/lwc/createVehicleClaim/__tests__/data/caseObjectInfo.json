@@ -1,0 +1,9 @@
+{
+  "apiName": "Case",
+  "fields": {
+    "Date_and_Time_of_Incident__c": { "label": "Date and Time of Incident" },
+    "Subject": { "label": "Subject" },
+    "Damage_Detail__c": { "label": "Damage Detail" },
+    "Description": { "label": "Description" }
+  }
+}

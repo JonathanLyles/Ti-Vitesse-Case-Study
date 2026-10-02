@@ -1,0 +1,7 @@
+{
+  "apiName": "Case",
+  "id": "500000000000001AAA",
+  "fields": {
+    "CaseNumber": { "displayValue": null, "value": "00001234" }
+  }
+}

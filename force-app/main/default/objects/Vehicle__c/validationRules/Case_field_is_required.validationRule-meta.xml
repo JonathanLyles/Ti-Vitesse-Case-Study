@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Case_field_is_required</fullName>
+    <active>true</active>
+    <description>Checks if the vehicle has a case</description>
+    <errorConditionFormula>ISBLANK( Case__c )</errorConditionFormula>
+    <errorMessage>Vehicle must have a case</errorMessage>
+</ValidationRule>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<SharingSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <accessMappings>
+        <accessLevel>Read</accessLevel>
+        <object>Case</object>
+        <objectField>Contact</objectField>
+        <userField>Contact</userField>
+    </accessMappings>
+    <description
+  >Lets customers on the Experience site read the Cases (claims) raised for their Contact, which are owned by their agent.</description>
+    <name>Customer Claims Access</name>
+    <profiles>Customer Community Clone</profiles>
+</SharingSet>

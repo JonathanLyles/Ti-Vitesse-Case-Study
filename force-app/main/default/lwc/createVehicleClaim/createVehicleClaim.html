@@ -1,0 +1,156 @@
+<template>
+  <lightning-card title="Submit a Vehicle Claim" icon-name="standard:case">
+    <div class="slds-var-p-horizontal_medium slds-is-relative">
+      <template lwc:if={isSaving}>
+        <lightning-spinner
+          alternative-text="Submitting your claim"
+          size="medium"
+        ></lightning-spinner>
+      </template>
+
+      <h3 class="slds-text-heading_small slds-var-m-bottom_small">Incident</h3>
+      <lightning-layout multiple-rows>
+        <lightning-layout-item
+          size="12"
+          medium-device-size="6"
+          padding="horizontal-small"
+        >
+          <lightning-input
+            type="datetime"
+            label={labels.incidentDate}
+            data-field="incidentDate"
+            value={values.incidentDate}
+            max={maxIncidentDate}
+            required
+            onchange={handleChange}
+          ></lightning-input>
+        </lightning-layout-item>
+        <lightning-layout-item
+          size="12"
+          medium-device-size="6"
+          padding="horizontal-small"
+        >
+          <lightning-input
+            label={labels.subject}
+            data-field="subject"
+            value={values.subject}
+            required
+            onchange={handleChange}
+          ></lightning-input>
+        </lightning-layout-item>
+        <lightning-layout-item
+          size="12"
+          medium-device-size="6"
+          padding="horizontal-small"
+        >
+          <lightning-textarea
+            label={labels.damageDetail}
+            data-field="damageDetail"
+            value={values.damageDetail}
+            onchange={handleChange}
+          ></lightning-textarea>
+        </lightning-layout-item>
+        <lightning-layout-item
+          size="12"
+          medium-device-size="6"
+          padding="horizontal-small"
+        >
+          <lightning-textarea
+            label={labels.description}
+            data-field="description"
+            value={values.description}
+            onchange={handleChange}
+          ></lightning-textarea>
+        </lightning-layout-item>
+      </lightning-layout>
+
+      <h3 class="slds-text-heading_small slds-var-m-vertical_small">Vehicle</h3>
+      <lightning-layout multiple-rows>
+        <lightning-layout-item
+          size="12"
+          medium-device-size="6"
+          padding="horizontal-small"
+        >
+          <lightning-combobox
+            label={labels.make}
+            data-field="make"
+            value={values.make}
+            options={makeOptions}
+            placeholder="Select a make"
+            required
+            onchange={handleChange}
+          ></lightning-combobox>
+        </lightning-layout-item>
+        <lightning-layout-item
+          size="12"
+          medium-device-size="6"
+          padding="horizontal-small"
+        >
+          <lightning-input
+            label={labels.model}
+            data-field="model"
+            value={values.model}
+            required
+            onchange={handleChange}
+          ></lightning-input>
+        </lightning-layout-item>
+        <lightning-layout-item
+          size="12"
+          medium-device-size="6"
+          padding="horizontal-small"
+        >
+          <lightning-input
+            label={labels.registration}
+            data-field="registration"
+            value={values.registration}
+            required
+            onchange={handleChange}
+          ></lightning-input>
+        </lightning-layout-item>
+        <lightning-layout-item
+          size="12"
+          medium-device-size="6"
+          padding="horizontal-small"
+        >
+          <lightning-input
+            type="number"
+            label={labels.mileage}
+            data-field="mileage"
+            value={values.mileage}
+            step="1"
+            min="0"
+            max="999999"
+            required
+            onchange={handleChange}
+          ></lightning-input>
+        </lightning-layout-item>
+        <lightning-layout-item
+          size="12"
+          medium-device-size="6"
+          padding="horizontal-small"
+        >
+          <lightning-input
+            type="number"
+            label={labels.engineCapacity}
+            data-field="engineCapacity"
+            value={values.engineCapacity}
+            step="1"
+            min="0"
+            max="9999"
+            required
+            onchange={handleChange}
+          ></lightning-input>
+        </lightning-layout-item>
+      </lightning-layout>
+    </div>
+
+    <div slot="footer">
+      <lightning-button
+        variant="brand"
+        label="Submit claim"
+        disabled={isSaving}
+        onclick={handleSubmit}
+      ></lightning-button>
+    </div>
+  </lightning-card>
+</template>
