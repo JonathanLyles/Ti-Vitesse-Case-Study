@@ -90,17 +90,30 @@ What we also handle: the instance state that survives a reconnect. After each lo
 an expanded claim that is no longer in the list is collapsed (J13), and an empty
 list makes the component disappear (J14).
 
-### `getMyClaims` stays `cacheable=true` (open question)
+### `getMyClaims` is not cacheable
 
-Cacheable Apex results can be cached on the client, and `refreshApex` only works
-with `@wire`, which this component does not use. A reload after a submit (R8) may
-therefore return the previously cached list, without the new claim. This is **not
-confirmed**: check M10 to M12 on the site. Jonathan decided to leave
-`cacheable=true` for now and decide later; it is tracked in GitHub issue #1
-(https://github.com/JonathanLyles/Ti-Vitesse-Case-Study/issues/1). The usual fix is
-to remove `cacheable=true`, at the cost of one extra server call per page view.
+`getMyClaims` is a plain `@AuraEnabled` method, **not** `cacheable=true`, so every
+load goes to the server.
 
-Decisions: Jonathan, 2026-10-04.
+Why: cacheable Apex results can be kept on the client under a key made of the
+method and its parameters. `getMyClaims()` has no parameters, so every call uses the
+same key. The claim is saved by a different Apex method (`createVehicleClaim`'s
+`createClaim`), so nothing tells the cache the list changed, and `refreshApex` only
+works with `@wire`, which this component does not use. After a submit (R8) the
+reload returned the cached list without the new claim, so the list looked
+unchanged.
+
+History:
+
+1. R8 shipped with `cacheable=true`. It passed the Jest tests, which mock Apex, but
+   on the site the list did not refresh (GitHub issue #2).
+2. On 2026-10-05 `cacheable=true` was removed and the change was confirmed on the
+   site: the new claim appears without a page reload. This resolved issues #1 and #2.
+
+Cost: one extra server call per page view and per submitted claim. Add caching back
+only with a way to clear it after a submit.
+
+Decisions: Jonathan, 2026-10-04 and 2026-10-05.
 
 ## Tests that must pass
 
@@ -192,20 +205,20 @@ Run: `npm run test:unit`, `npm run lint`, `npm run prettier:verify`.
 
 ### Manual acceptance on the site, after deploy and publish
 
-| #   | Check                                                                                                                                          | Proves     |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| M1  | "My Vehicle Claims" is in the Experience Builder component panel, and not in the Lightning App Builder                                         | R1         |
-| M2  | A customer with claims sees only their own, newest first, with the five columns. Also confirms the permission set grants class access.         | R2, R3, D1 |
-| M3  | Clicking a claim shows its details; clicking again hides them                                                                                  | R4, D5     |
-| M4  | A second customer's claims are not visible to the first customer                                                                               | R2         |
-| M5  | A customer with no claims sees no component                                                                                                    | R5         |
-| M6  | An agent changes a claim's Status; after a reload the customer sees it                                                                         | R3, D4     |
-| M7  | A logged-out visitor on a public page with the component sees nothing, and no error                                                            | R7         |
-| M8  | At phone width rows and details are readable, with no horizontal scrolling                                                                     | Mobile     |
-| M9  | An agent adds a damaged vehicle to a claim; the customer sees it in the details                                                                | R6         |
-| M10 | With the form and the list on one page, a customer with no claims submits a claim: the list appears, with the new claim, without a page reload | R8, R5     |
-| M11 | A customer with claims submits another: it appears at the top, collapsed, and a claim that was expanded stays expanded                         | R8, D6     |
-| M12 | Submit a claim, navigate to another page and back: the new claim is still listed (this is the cache check, see issue #1)                       | R8         |
+| #   | Check                                                                                                                                            | Proves     |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
+| M1  | "My Vehicle Claims" is in the Experience Builder component panel, and not in the Lightning App Builder                                           | R1         |
+| M2  | A customer with claims sees only their own, newest first, with the five columns. Also confirms the permission set grants class access.           | R2, R3, D1 |
+| M3  | Clicking a claim shows its details; clicking again hides them                                                                                    | R4, D5     |
+| M4  | A second customer's claims are not visible to the first customer                                                                                 | R2         |
+| M5  | A customer with no claims sees no component                                                                                                      | R5         |
+| M6  | An agent changes a claim's Status; after a reload the customer sees it                                                                           | R3, D4     |
+| M7  | A logged-out visitor on a public page with the component sees nothing, and no error                                                              | R7         |
+| M8  | At phone width rows and details are readable, with no horizontal scrolling                                                                       | Mobile     |
+| M9  | An agent adds a damaged vehicle to a claim; the customer sees it in the details                                                                  | R6         |
+| M10 | With the form and the list on one page, a customer with no claims submits a claim: the list appears, with the new claim, without a page reload   | R8, R5     |
+| M11 | A customer with claims submits another: it appears at the top, collapsed, and a claim that was expanded stays expanded                           | R8, D6     |
+| M12 | Submit a claim, navigate to another page and back: the new claim is still listed (this is the cache check, see "`getMyClaims` is not cacheable") | R8         |
 
 ## Placing it on the site
 
@@ -213,7 +226,7 @@ Add **My Vehicle Claims** to a page in Experience Builder and publish.
 
 For the list to refresh the moment a claim is submitted (R8), put it on the **same
 page** as **Create Vehicle Claim**. On different pages it still shows the new claim
-the next time its page loads, subject to the caching question in issue #1.
+the next time its page loads.
 
 The component ships with `claimEvents` (an internal module, not shown in Experience
 Builder), so deploy `lwc/claimEvents` together with `lwc/myVehicleClaims` and

@@ -15,7 +15,7 @@ public with sharing class CustomerClaimsController {
    * @return The customer's claims, or an empty list when the user has no Contact
    *         (for example an internal user) or no claims.
    */
-  @AuraEnabled(cacheable=true)
+  @AuraEnabled
   public static List<Case> getMyClaims() {
     Id contactId = [
       SELECT ContactId
