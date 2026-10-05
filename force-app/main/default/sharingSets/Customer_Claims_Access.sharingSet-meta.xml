@@ -6,8 +6,14 @@
         <objectField>Contact</objectField>
         <userField>Contact</userField>
     </accessMappings>
+    <accessMappings>
+        <accessLevel>Read</accessLevel>
+        <object>Vehicle__c</object>
+        <objectField>Contact__c</objectField>
+        <userField>Contact</userField>
+    </accessMappings>
     <description
-  >Lets customers on the Experience site read the Cases (claims) raised for their Contact, which are owned by their agent.</description>
+  >Lets customers on the Experience site read the Cases (claims) and Vehicles raised for their Contact, which are owned by their agent.</description>
     <name>Customer Claims Access</name>
     <profiles>Customer Community Clone</profiles>
 </SharingSet>

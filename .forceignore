@@ -11,4 +11,7 @@ package.xml
 # LWC Jest
 **/__tests__/**
 
+# Requirements documents kept next to a component, not part of the bundle
+**/lwc/**/REQUIREMENTS.md
+
 node_modules/

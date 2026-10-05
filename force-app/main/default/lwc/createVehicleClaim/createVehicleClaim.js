@@ -4,6 +4,7 @@ import { getObjectInfo, getPicklistValues } from "lightning/uiObjectInfoApi";
 import { getRecord, getFieldValue } from "lightning/uiRecordApi";
 import createClaim from "@salesforce/apex/VehicleClaimController.createClaim";
 import getVehicleRecordTypeId from "@salesforce/apex/VehicleClaimController.getVehicleRecordTypeId";
+import { publishClaimSubmitted } from "c/claimEvents";
 
 import CASE_OBJECT from "@salesforce/schema/Case";
 import CASE_NUMBER_FIELD from "@salesforce/schema/Case.CaseNumber";
@@ -126,12 +127,14 @@ export default class CreateVehicleClaim extends LightningElement {
     }
 
     this.isSaving = true;
+    let isSaved = false;
     try {
       this.caseId = await createClaim({
         claim: this.buildRecord(CASE_OBJECT, CASE_FIELDS),
         vehicle: this.buildRecord(VEHICLE_OBJECT, VEHICLE_FIELDS)
       });
       this.values = {};
+      isSaved = true;
     } catch (error) {
       this.showToast(
         "Claim not submitted",
@@ -140,6 +143,10 @@ export default class CreateVehicleClaim extends LightningElement {
       );
     } finally {
       this.isSaving = false;
+    }
+    // Outside the try, so a failing subscriber is never reported as a failed claim
+    if (isSaved) {
+      publishClaimSubmitted();
     }
   }
 

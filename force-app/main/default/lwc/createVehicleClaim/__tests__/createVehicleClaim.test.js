@@ -4,6 +4,7 @@ import { getObjectInfo, getPicklistValues } from "lightning/uiObjectInfoApi";
 import { getRecord } from "lightning/uiRecordApi";
 import createClaim from "@salesforce/apex/VehicleClaimController.createClaim";
 import getVehicleRecordTypeId from "@salesforce/apex/VehicleClaimController.getVehicleRecordTypeId";
+import { subscribeToClaimSubmitted } from "c/claimEvents";
 
 const caseObjectInfo = require("./data/caseObjectInfo.json");
 const vehicleObjectInfo = require("./data/vehicleObjectInfo.json");
@@ -98,12 +99,22 @@ function listenForToasts(element) {
   return handler;
 }
 
+// Subscriptions live in a shared module, so each test removes its own afterwards
+const unsubscribers = [];
+
+function listenForSubmittedClaims() {
+  const handler = jest.fn();
+  unsubscribers.push(subscribeToClaimSubmitted(handler));
+  return handler;
+}
+
 function submit(element) {
   element.shadowRoot.querySelector("lightning-button").click();
 }
 
 describe("c-create-vehicle-claim", () => {
   afterEach(() => {
+    unsubscribers.splice(0).forEach((unsubscribe) => unsubscribe());
     while (document.body.firstChild) {
       document.body.removeChild(document.body.firstChild);
     }
@@ -208,5 +219,42 @@ describe("c-create-vehicle-claim", () => {
     });
     expect(getInput(element, "subject").value).toBe(FORM_VALUES.subject);
     expect(getInput(element, "mileage").value).toBe(FORM_VALUES.mileage);
+  });
+
+  it("tells other components once when a claim has been submitted", async () => {
+    createClaim.mockResolvedValue(CASE_ID);
+    const claimSubmitted = listenForSubmittedClaims();
+    const element = await createComponent();
+    fillForm(element);
+    setValidity(element, true);
+
+    submit(element);
+    await flushPromises();
+
+    expect(claimSubmitted).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not tell other components when required fields are missing", async () => {
+    const claimSubmitted = listenForSubmittedClaims();
+    const element = await createComponent();
+    setValidity(element, false);
+
+    submit(element);
+    await flushPromises();
+
+    expect(claimSubmitted).not.toHaveBeenCalled();
+  });
+
+  it("does not tell other components when the claim could not be saved", async () => {
+    createClaim.mockRejectedValue({ body: { message: "Not saved" } });
+    const claimSubmitted = listenForSubmittedClaims();
+    const element = await createComponent();
+    fillForm(element);
+    setValidity(element, true);
+
+    submit(element);
+    await flushPromises();
+
+    expect(claimSubmitted).not.toHaveBeenCalled();
   });
 });

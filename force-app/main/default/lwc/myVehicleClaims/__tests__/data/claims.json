@@ -1,0 +1,60 @@
+[
+  {
+    "Id": "500000000000003AAA",
+    "CaseNumber": "00001003",
+    "Subject": "Windscreen cracked by debris",
+    "Status": "New",
+    "CreatedDate": "2026-10-01T09:00:00.000Z",
+    "Date_and_Time_of_Incident__c": "2026-09-30T14:30:00.000Z",
+    "Damage_Detail__c": "Cracked windscreen",
+    "Description": "Stone thrown up by a lorry on the motorway",
+    "Vehicles__r": [
+      {
+        "Id": "a00000000000001AAA",
+        "Make__c": "Ford",
+        "Model__c": "Focus",
+        "Registration_number__c": "FD19 XYZ",
+        "Mileage__c": 42000,
+        "Engine_Capacity__c": 1600
+      }
+    ]
+  },
+  {
+    "Id": "500000000000002AAA",
+    "CaseNumber": "00001002",
+    "Subject": "Rear-ended at traffic lights",
+    "Status": "In progress",
+    "CreatedDate": "2026-09-20T09:00:00.000Z",
+    "Date_and_Time_of_Incident__c": "2026-09-19T17:45:00.000Z",
+    "Damage_Detail__c": "Rear bumper dented",
+    "Description": "Hit from behind while stationary",
+    "Vehicles__r": [
+      {
+        "Id": "a00000000000002AAA",
+        "Make__c": "Volkswagen",
+        "Model__c": "Golf",
+        "Registration_number__c": "AB12 CDE",
+        "Mileage__c": 58000,
+        "Engine_Capacity__c": 1400
+      },
+      {
+        "Id": "a00000000000003AAA",
+        "Make__c": "Volkswagen",
+        "Model__c": "Passat",
+        "Registration_number__c": "AB12 CDF",
+        "Mileage__c": 61000,
+        "Engine_Capacity__c": 2000
+      }
+    ]
+  },
+  {
+    "Id": "500000000000001AAA",
+    "CaseNumber": "00001001",
+    "Subject": "Side mirror knocked off",
+    "Status": "Closed",
+    "CreatedDate": "2026-08-05T09:00:00.000Z",
+    "Date_and_Time_of_Incident__c": "2026-08-04T08:10:00.000Z",
+    "Damage_Detail__c": "Left mirror missing",
+    "Description": "Clipped by a passing van in a narrow street"
+  }
+]

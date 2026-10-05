@@ -5,6 +5,10 @@
   >Lets Experience Cloud customers submit vehicle claims with the createVehicleClaim component.</description>
     <hasActivationRequired>false</hasActivationRequired>
     <classAccesses>
+        <apexClass>CustomerClaimsController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>VehicleClaimController</apexClass>
         <enabled>true</enabled>
     </classAccesses>

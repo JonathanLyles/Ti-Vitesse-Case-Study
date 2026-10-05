@@ -1,0 +1,160 @@
+<template>
+  <template lwc:if={error}>
+    <lightning-card title="My Claims" icon-name="standard:case">
+      <p
+        class="slds-var-p-horizontal_medium slds-text-color_error"
+        role="alert"
+        data-error
+      >
+        {error}
+      </p>
+    </lightning-card>
+  </template>
+  <template lwc:elseif={hasClaims}>
+    <lightning-card title="My Claims" icon-name="standard:case">
+      <ul class="slds-var-p-horizontal_medium">
+        <template for:each={rows} for:item="row">
+          <li key={row.id} class="slds-border_top">
+            <button
+              type="button"
+              class="slds-button slds-button_reset slds-size_1-of-1 slds-text-align_left slds-var-p-vertical_small"
+              data-id={row.id}
+              aria-expanded={row.ariaExpanded}
+              onclick={handleToggle}
+            >
+              <span class="slds-grid slds-wrap slds-grid_vertical-align-center">
+                <span
+                  class="slds-col slds-size_1-of-1 slds-medium-size_1-of-5 slds-var-p-right_small"
+                >
+                  <span class="slds-text-title slds-show">Case number</span>
+                  <span class="slds-show" data-cell="caseNumber"
+                    >{row.caseNumber}</span
+                  >
+                </span>
+                <span
+                  class="slds-col slds-size_1-of-1 slds-medium-size_1-of-5 slds-var-p-right_small"
+                >
+                  <span class="slds-text-title slds-show">Subject</span>
+                  <span class="slds-show" data-cell="subject"
+                    >{row.subject}</span
+                  >
+                </span>
+                <span
+                  class="slds-col slds-size_1-of-1 slds-medium-size_1-of-5 slds-var-p-right_small"
+                >
+                  <span class="slds-text-title slds-show"
+                    >Date of incident</span
+                  >
+                  <span class="slds-show" data-cell="incidentDate">
+                    <lightning-formatted-date-time
+                      lwc:if={row.incidentDate}
+                      value={row.incidentDate}
+                      year="numeric"
+                      month="short"
+                      day="2-digit"
+                      hour="2-digit"
+                      minute="2-digit"
+                    ></lightning-formatted-date-time>
+                  </span>
+                </span>
+                <span
+                  class="slds-col slds-size_1-of-1 slds-medium-size_1-of-5 slds-var-p-right_small"
+                >
+                  <span class="slds-text-title slds-show">Date submitted</span>
+                  <span class="slds-show" data-cell="createdDate">
+                    <lightning-formatted-date-time
+                      value={row.createdDate}
+                      year="numeric"
+                      month="short"
+                      day="2-digit"
+                    ></lightning-formatted-date-time>
+                  </span>
+                </span>
+                <span class="slds-col slds-size_1-of-1 slds-medium-size_1-of-5">
+                  <span class="slds-text-title slds-show">Status</span>
+                  <lightning-badge
+                    label={row.status}
+                    data-cell="status"
+                  ></lightning-badge>
+                </span>
+              </span>
+            </button>
+
+            <div
+              lwc:if={row.isExpanded}
+              class="slds-var-p-around_medium slds-var-m-bottom_small slds-theme_shade"
+              data-details
+            >
+              <dl>
+                <div class="slds-var-m-bottom_small">
+                  <dt class="slds-text-title">Subject</dt>
+                  <dd>{row.subject}</dd>
+                </div>
+                <div class="slds-var-m-bottom_small">
+                  <dt class="slds-text-title">Status</dt>
+                  <dd>{row.status}</dd>
+                </div>
+                <div class="slds-var-m-bottom_small">
+                  <dt class="slds-text-title">Date of incident</dt>
+                  <dd data-detail="incidentDate">
+                    <lightning-formatted-date-time
+                      lwc:if={row.incidentDate}
+                      value={row.incidentDate}
+                      year="numeric"
+                      month="long"
+                      day="2-digit"
+                      hour="2-digit"
+                      minute="2-digit"
+                    ></lightning-formatted-date-time>
+                  </dd>
+                </div>
+                <div class="slds-var-m-bottom_small">
+                  <dt class="slds-text-title">Damage detail</dt>
+                  <dd data-detail="damageDetail">{row.damageDetail}</dd>
+                </div>
+                <div class="slds-var-m-bottom_small">
+                  <dt class="slds-text-title">Description</dt>
+                  <dd data-detail="description">{row.description}</dd>
+                </div>
+              </dl>
+
+              <template for:each={row.vehicles} for:item="vehicle">
+                <section key={vehicle.id} data-vehicle>
+                  <h3 class="slds-text-heading_small slds-var-m-bottom_x-small">
+                    {vehicle.title}
+                  </h3>
+                  <dl>
+                    <div class="slds-var-m-bottom_small">
+                      <dt class="slds-text-title">Make</dt>
+                      <dd data-vehicle-field="make">{vehicle.make}</dd>
+                    </div>
+                    <div class="slds-var-m-bottom_small">
+                      <dt class="slds-text-title">Model</dt>
+                      <dd data-vehicle-field="model">{vehicle.model}</dd>
+                    </div>
+                    <div class="slds-var-m-bottom_small">
+                      <dt class="slds-text-title">Registration number</dt>
+                      <dd data-vehicle-field="registration">
+                        {vehicle.registration}
+                      </dd>
+                    </div>
+                    <div class="slds-var-m-bottom_small">
+                      <dt class="slds-text-title">Mileage</dt>
+                      <dd data-vehicle-field="mileage">{vehicle.mileage}</dd>
+                    </div>
+                    <div class="slds-var-m-bottom_small">
+                      <dt class="slds-text-title">Engine capacity</dt>
+                      <dd data-vehicle-field="engineCapacity">
+                        {vehicle.engineCapacity}
+                      </dd>
+                    </div>
+                  </dl>
+                </section>
+              </template>
+            </div>
+          </li>
+        </template>
+      </ul>
+    </lightning-card>
+  </template>
+</template>
