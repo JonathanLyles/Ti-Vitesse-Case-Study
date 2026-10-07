@@ -12,6 +12,17 @@ public class VehicleLoanApiResponse {
     public String YearOfVehicle { get; set; }
 
     public Vehicle__c toVehicleRecord() {
+      if (String.isBlank(RegistrationNumber)) {
+        throw new IllegalArgumentException(
+          'Vehicle response is missing required field RegistrationNumber.'
+        );
+      }
+      if (String.isBlank(Model)) {
+        throw new IllegalArgumentException(
+          'Vehicle response is missing required field Model.'
+        );
+      }
+
       return new Vehicle__c(
         Registration_number__c = RegistrationNumber,
         Make__c = Make,

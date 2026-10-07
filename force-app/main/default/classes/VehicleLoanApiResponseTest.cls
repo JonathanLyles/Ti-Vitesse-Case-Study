@@ -41,12 +41,48 @@ private class VehicleLoanApiResponseTest {
     Assert.areEqual(0, response.vehicles.size());
   }
 
+  @IsTest
+  static void rejectsMissingRegistrationNumberOrModelBeforeMapping() {
+    VehicleLoanApiResponse.Vehicle missingRegistration = new VehicleLoanApiResponse.Vehicle();
+    missingRegistration.Model = 'Hardbody x38';
+    assertInvalidVehicle(
+      missingRegistration,
+      'Vehicle response is missing required field RegistrationNumber.'
+    );
+
+    VehicleLoanApiResponse.Vehicle missingModel = new VehicleLoanApiResponse.Vehicle();
+    missingModel.RegistrationNumber = '7897NV15';
+    missingModel.Model = ' ';
+    assertInvalidVehicle(
+      missingModel,
+      'Vehicle response is missing required field Model.'
+    );
+  }
+
   private static VehicleLoanApiResponse deserializeResponse(String jsonBody) {
     List<VehicleLoanApiResponse.Vehicle> vehicles = (List<VehicleLoanApiResponse.Vehicle>) JSON.deserialize(
       jsonBody,
       List<VehicleLoanApiResponse.Vehicle>.class
     );
     return new VehicleLoanApiResponse(vehicles);
+  }
+
+  private static void assertInvalidVehicle(
+    VehicleLoanApiResponse.Vehicle vehicle,
+    String expectedMessage
+  ) {
+    String errorMessage;
+    try {
+      vehicle.toVehicleRecord();
+    } catch (IllegalArgumentException e) {
+      errorMessage = e.getMessage();
+    }
+
+    Assert.areEqual(
+      expectedMessage,
+      errorMessage,
+      'Incomplete API data should not be mapped to an incomplete Salesforce record'
+    );
   }
 
   private static void assertVehicle(

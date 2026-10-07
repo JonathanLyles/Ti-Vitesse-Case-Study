@@ -57,8 +57,10 @@ public with sharing class CustomerClaimsController {
         WITH USER_MODE
         ORDER BY CreatedDate DESC, CaseNumber DESC
       ];
+    } catch (QueryException e) {
+      throw buildQueryError(e);
     } catch (Exception e) {
-      throw buildError('Your claims could not be loaded: ' + e.getMessage());
+      throw buildQueryError(e);
     }
   }
 
@@ -72,5 +74,24 @@ public with sharing class CustomerClaimsController {
     AuraHandledException error = new AuraHandledException(message);
     error.setMessage(message);
     return error;
+  }
+
+  private static void logQueryFailure(Exception e) {
+    System.debug(
+      LoggingLevel.ERROR,
+      'Customer claims query failed (' +
+        e.getTypeName() +
+        '): ' +
+        e.getMessage() +
+        '\n' +
+        e.getStackTraceString()
+    );
+  }
+
+  private static AuraHandledException buildQueryError(Exception e) {
+    logQueryFailure(e);
+    return buildError(
+      'Your claims could not be loaded. Please try again or contact your administrator.'
+    );
   }
 }

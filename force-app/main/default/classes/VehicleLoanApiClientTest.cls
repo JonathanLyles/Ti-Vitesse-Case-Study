@@ -96,6 +96,68 @@ private class VehicleLoanApiClientTest {
   }
 
   @IsTest
+  static void rejectsMissingOAuthArgumentsBeforeCallout() {
+    Test.setMock(HttpCalloutMock.class, new UnexpectedCalloutMock());
+    List<String> parameterNames = new List<String>{
+      'grantType',
+      'clientId',
+      'clientSecret',
+      'username',
+      'password'
+    };
+
+    for (
+      Integer parameterIndex = 0;
+      parameterIndex < parameterNames.size();
+      parameterIndex++
+    ) {
+      for (String invalidValue : new List<String>{ null, ' ' }) {
+        List<String> values = new List<String>{
+          'password',
+          'client-id',
+          'client-secret',
+          'api@example.com',
+          'password',
+          null
+        };
+        values[parameterIndex] = invalidValue;
+
+        String errorMessage;
+        try {
+          requestAccessToken(values);
+        } catch (CalloutException e) {
+          errorMessage = e.getMessage();
+        }
+        Assert.areEqual(
+          'OAuth token request requires a nonblank ' +
+            parameterNames[parameterIndex] +
+            '.',
+          errorMessage,
+          'A missing or blank OAuth argument should fail before the callout'
+        );
+      }
+    }
+  }
+
+  @IsTest
+  static void rejectsBlankVehicleAccessTokenBeforeCallout() {
+    Test.setMock(HttpCalloutMock.class, new UnexpectedCalloutMock());
+
+    String errorMessage;
+    try {
+      new VehicleLoanApiClient().getVehicles(' ');
+    } catch (CalloutException e) {
+      errorMessage = e.getMessage();
+    }
+
+    Assert.areEqual(
+      'Vehicle request requires a nonblank access token.',
+      errorMessage,
+      'A blank bearer token should fail before the callout'
+    );
+  }
+
+  @IsTest
   static void parsesVehicleResponseAndMapsSavableRecordFields() {
     Test.setMock(
       HttpCalloutMock.class,
@@ -191,6 +253,27 @@ private class VehicleLoanApiClientTest {
         errorMessage.contains('service unavailable'),
       'The vehicle API failure and status should be surfaced'
     );
+  }
+
+  private static String requestAccessToken(List<String> values) {
+    return new VehicleLoanApiClient()
+      .getAccessToken(
+        values[0],
+        values[1],
+        values[2],
+        values[3],
+        values[4],
+        values[5]
+      );
+  }
+
+  private class UnexpectedCalloutMock implements HttpCalloutMock {
+    public HttpResponse respond(HttpRequest request) {
+      Assert.fail(
+        'Invalid input should be rejected before the HTTP callout is sent'
+      );
+      return new HttpResponse();
+    }
   }
 
   private class OAuthCalloutMock implements HttpCalloutMock {
