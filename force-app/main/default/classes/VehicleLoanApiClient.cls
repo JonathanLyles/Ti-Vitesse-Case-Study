@@ -7,6 +7,12 @@ public with sharing class VehicleLoanApiClient {
     String password,
     String securityToken
   ) {
+    requireValue(grantType, 'grantType');
+    requireValue(clientId, 'clientId');
+    requireValue(clientSecret, 'clientSecret');
+    requireValue(username, 'username');
+    requireValue(password, 'password');
+
     Http http = new Http();
     HttpRequest request = new HttpRequest();
     request.setEndpoint('callout:TiVitesseBearerToken');
@@ -53,7 +59,21 @@ public with sharing class VehicleLoanApiClient {
     return EncodingUtil.urlEncode(value, 'UTF-8');
   }
 
+  private static void requireValue(String value, String parameterName) {
+    if (String.isBlank(value)) {
+      throw new CalloutException(
+        'OAuth token request requires a nonblank ' + parameterName + '.'
+      );
+    }
+  }
+
   public VehicleLoanApiResponse getVehicles(String accessToken) {
+    if (String.isBlank(accessToken)) {
+      throw new CalloutException(
+        'Vehicle request requires a nonblank access token.'
+      );
+    }
+
     Http http = new Http();
     HttpRequest request = new HttpRequest();
     request.setEndpoint('callout:TiVitesseNamedCredential/getVehicles/');
