@@ -255,6 +255,100 @@ private class VehicleLoanApiClientTest {
     );
   }
 
+  @IsTest
+  static void postsVehicleReservationAndAcceptsHttp200() {
+    Test.setMock(
+      HttpCalloutMock.class,
+      new VehicleReservationCalloutMock(
+        200,
+        '{"Message":"success"}',
+        'callout:TiVitesseNamedCredential/updateVehicle/REG%20123'
+      )
+    );
+
+    Test.startTest();
+    new VehicleLoanApiClient().updateVehicle('test-access-token', 'REG 123');
+    Test.stopTest();
+  }
+
+  @IsTest
+  static void acceptsOtherHttp2xxReservationStatusWithoutParsingBody() {
+    Test.setMock(
+      HttpCalloutMock.class,
+      new VehicleReservationCalloutMock(
+        204,
+        'not JSON',
+        'callout:TiVitesseNamedCredential/updateVehicle/7897NV15'
+      )
+    );
+
+    Test.startTest();
+    new VehicleLoanApiClient().updateVehicle('test-access-token', '7897NV15');
+    Test.stopTest();
+  }
+
+  @IsTest
+  static void rejectsMissingVehicleReservationArgumentsBeforeCallout() {
+    Test.setMock(HttpCalloutMock.class, new UnexpectedCalloutMock());
+
+    List<String> accessTokens = new List<String>{ null, ' ' };
+    for (String accessToken : accessTokens) {
+      String errorMessage;
+      try {
+        new VehicleLoanApiClient().updateVehicle(accessToken, '7897NV15');
+      } catch (CalloutException e) {
+        errorMessage = e.getMessage();
+      }
+      Assert.areEqual(
+        'Vehicle reservation requires a nonblank access token.',
+        errorMessage,
+        'A missing or blank access token should fail before the callout'
+      );
+    }
+
+    List<String> registrationNumbers = new List<String>{ null, ' ' };
+    for (String registrationNumber : registrationNumbers) {
+      String errorMessage;
+      try {
+        new VehicleLoanApiClient()
+          .updateVehicle('test-access-token', registrationNumber);
+      } catch (CalloutException e) {
+        errorMessage = e.getMessage();
+      }
+      Assert.areEqual(
+        'Vehicle reservation requires a nonblank registration number.',
+        errorMessage,
+        'A missing or blank registration number should fail before the callout'
+      );
+    }
+  }
+
+  @IsTest
+  static void throwsUsefulErrorForVehicleReservationFailure() {
+    Test.setMock(
+      HttpCalloutMock.class,
+      new VehicleReservationCalloutMock(
+        503,
+        '{"error":"service unavailable"}',
+        'callout:TiVitesseNamedCredential/updateVehicle/7897NV15'
+      )
+    );
+
+    String errorMessage;
+    try {
+      new VehicleLoanApiClient().updateVehicle('test-access-token', '7897NV15');
+    } catch (CalloutException e) {
+      errorMessage = e.getMessage();
+    }
+
+    Assert.isTrue(
+      errorMessage != null &&
+        errorMessage.contains('HTTP 503') &&
+        errorMessage.contains('service unavailable'),
+      'The reservation API failure and status should be surfaced'
+    );
+  }
+
   private static String requestAccessToken(List<String> values) {
     return new VehicleLoanApiClient()
       .getAccessToken(
@@ -333,6 +427,41 @@ private class VehicleLoanApiClientTest {
         'Bearer test-access-token',
         request.getHeader('Authorization')
       );
+
+      HttpResponse response = new HttpResponse();
+      response.setStatusCode(statusCode);
+      response.setBody(responseBody);
+      return response;
+    }
+  }
+
+  private class VehicleReservationCalloutMock implements HttpCalloutMock {
+    private Integer statusCode;
+    private String responseBody;
+    private String expectedEndpoint;
+
+    private VehicleReservationCalloutMock(
+      Integer statusCode,
+      String responseBody,
+      String expectedEndpoint
+    ) {
+      this.statusCode = statusCode;
+      this.responseBody = responseBody;
+      this.expectedEndpoint = expectedEndpoint;
+    }
+
+    public HttpResponse respond(HttpRequest request) {
+      Assert.areEqual(
+        expectedEndpoint,
+        request.getEndpoint(),
+        'The vehicle reservation should use the configured API Named Credential'
+      );
+      Assert.areEqual('POST', request.getMethod());
+      Assert.areEqual(
+        'Bearer test-access-token',
+        request.getHeader('Authorization')
+      );
+      Assert.areEqual('', request.getBody(), 'The POST body should be empty');
 
       HttpResponse response = new HttpResponse();
       response.setStatusCode(statusCode);

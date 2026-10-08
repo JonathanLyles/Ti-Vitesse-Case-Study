@@ -101,4 +101,40 @@ public with sharing class VehicleLoanApiClient {
     }
     return new VehicleLoanApiResponse(vehicles);
   }
+
+  public void updateVehicle(String accessToken, String registrationNumber) {
+    if (String.isBlank(accessToken)) {
+      throw new CalloutException(
+        'Vehicle reservation requires a nonblank access token.'
+      );
+    }
+    if (String.isBlank(registrationNumber)) {
+      throw new CalloutException(
+        'Vehicle reservation requires a nonblank registration number.'
+      );
+    }
+
+    HttpRequest request = new HttpRequest();
+    request.setEndpoint(
+      'callout:TiVitesseNamedCredential/updateVehicle/' +
+      encodePathSegment(registrationNumber)
+    );
+    request.setHeader('Authorization', 'Bearer ' + accessToken);
+    request.setMethod('POST');
+    request.setBody('');
+
+    HttpResponse response = new Http().send(request);
+    if (response.getStatusCode() < 200 || response.getStatusCode() >= 300) {
+      throw new CalloutException(
+        'Vehicle reservation request failed with HTTP ' +
+          response.getStatusCode() +
+          ': ' +
+          response.getBody()
+      );
+    }
+  }
+
+  private static String encodePathSegment(String value) {
+    return EncodingUtil.urlEncode(value, 'UTF-8').replace('+', '%20');
+  }
 }
