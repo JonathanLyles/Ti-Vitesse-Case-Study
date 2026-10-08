@@ -1,0 +1,200 @@
+<template>
+  <lightning-card
+    title="Loan a Vehicle"
+    icon-name="standard:service_appointment"
+  >
+    <div class="slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+      <template lwc:if={isLoading}>
+        <lightning-spinner
+          alternative-text="Loading vehicle loan information"
+          size="medium"
+        ></lightning-spinner>
+      </template>
+
+      <template lwc:if={errorMessage}>
+        <div
+          class="slds-notify slds-notify_alert slds-alert_error"
+          role="alert"
+        >
+          <span>{errorMessage}</span>
+        </div>
+      </template>
+
+      <template lwc:if={missingRecordId}>
+        <p role="alert">Open this component from a vehicle claim Case.</p>
+      </template>
+
+      <template lwc:if={hasActiveLoan}>
+        <section aria-label="Active vehicle loan">
+          <h2 class="slds-text-heading_small slds-var-m-bottom_small">
+            Your active loan
+          </h2>
+          <dl class="slds-list_horizontal slds-wrap">
+            <dt class="slds-item_label slds-text-color_weak">Make</dt>
+            <dd class="slds-item_detail">{context.activeLoan.Make__c}</dd>
+            <dt class="slds-item_label slds-text-color_weak">Model</dt>
+            <dd class="slds-item_detail">{context.activeLoan.Model__c}</dd>
+            <dt class="slds-item_label slds-text-color_weak">Year</dt>
+            <dd class="slds-item_detail">
+              {context.activeLoan.Year_of_Vehicle__c}
+            </dd>
+            <dt class="slds-item_label slds-text-color_weak">Registration</dt>
+            <dd class="slds-item_detail">
+              {context.activeLoan.Registration_number__c}
+            </dd>
+            <dt class="slds-item_label slds-text-color_weak">Mileage</dt>
+            <dd class="slds-item_detail">{context.activeLoan.Mileage__c}</dd>
+            <dt class="slds-item_label slds-text-color_weak">
+              Engine Capacity
+            </dt>
+            <dd class="slds-item_detail">
+              {context.activeLoan.Engine_Capacity__c}
+            </dd>
+          </dl>
+          <template lwc:if={context.canReturnActiveLoan}>
+            <lightning-button
+              class="slds-var-m-top_medium"
+              label="Return vehicle"
+              variant="brand"
+              disabled={actionDisabled}
+              onclick={handleReturn}
+            ></lightning-button>
+          </template>
+          <template lwc:else>
+            <p class="slds-var-m-top_small">
+              This loan is linked to a different Case and cannot be returned
+              from this page.
+            </p>
+          </template>
+        </section>
+      </template>
+
+      <template lwc:elseif={context}>
+        <section aria-label="Available vehicles">
+          <h2 class="slds-text-heading_small slds-var-m-bottom_small">
+            Available vehicles
+          </h2>
+          <lightning-layout multiple-rows>
+            <lightning-layout-item
+              size="12"
+              medium-device-size="4"
+              padding="horizontal-small"
+            >
+              <lightning-input
+                type="search"
+                label="Filter by make"
+                data-filter="make"
+                value={filters.make}
+                onchange={handleFilterChange}
+              ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item
+              size="12"
+              medium-device-size="4"
+              padding="horizontal-small"
+            >
+              <lightning-input
+                type="search"
+                label="Filter by model"
+                data-filter="model"
+                value={filters.model}
+                onchange={handleFilterChange}
+              ></lightning-input>
+            </lightning-layout-item>
+            <lightning-layout-item
+              size="12"
+              medium-device-size="4"
+              padding="horizontal-small"
+            >
+              <lightning-input
+                type="search"
+                label="Filter by year"
+                data-filter="year"
+                value={filters.year}
+                onchange={handleFilterChange}
+              ></lightning-input>
+            </lightning-layout-item>
+          </lightning-layout>
+
+          <template lwc:if={hasVehicles}>
+            <ul class="slds-grid slds-wrap slds-gutters">
+              <template for:each={filteredVehicles} for:item="vehicle">
+                <li
+                  key={vehicle.registrationNumber}
+                  class="slds-col slds-size_1-of-1 slds-large-size_1-of-2 slds-var-m-top_medium"
+                >
+                  <article
+                    class="slds-box"
+                    aria-label={vehicle.registrationNumber}
+                  >
+                    <h3 class="slds-text-heading_small">
+                      {vehicle.make} {vehicle.model}
+                    </h3>
+                    <p>Year: {vehicle.yearOfVehicle}</p>
+                    <p>Registration: {vehicle.registrationNumber}</p>
+                    <template lwc:if={vehicle.isSelected}>
+                      <lightning-input
+                        class="slds-var-m-top_small"
+                        type="number"
+                        label="Mileage"
+                        data-loan-detail
+                        data-field="mileage"
+                        value={mileage}
+                        step="1"
+                        min="0"
+                        max="999999"
+                        required
+                        onchange={handleLoanDetailChange}
+                      ></lightning-input>
+                      <lightning-input
+                        type="number"
+                        label="Engine Capacity"
+                        data-loan-detail
+                        data-field="engineCapacity"
+                        value={engineCapacity}
+                        step="1"
+                        min="0"
+                        max="9999"
+                        required
+                        onchange={handleLoanDetailChange}
+                      ></lightning-input>
+                      <lightning-button
+                        class="slds-var-m-top_small"
+                        label="Confirm reservation"
+                        variant="brand"
+                        data-confirm-reservation
+                        disabled={actionDisabled}
+                        onclick={handleReserve}
+                      ></lightning-button>
+                      <lightning-button
+                        class="slds-var-m-top_small slds-var-m-left_x-small"
+                        label="Cancel"
+                        disabled={actionDisabled}
+                        onclick={handleCancelSelection}
+                      ></lightning-button>
+                    </template>
+                    <template lwc:else>
+                      <lightning-button
+                        class="slds-var-m-top_small"
+                        label="Loan this vehicle"
+                        variant="brand"
+                        data-registration={vehicle.registrationNumber}
+                        disabled={actionDisabled}
+                        onclick={handleSelectVehicle}
+                      ></lightning-button>
+                    </template>
+                  </article>
+                </li>
+              </template>
+            </ul>
+          </template>
+          <template lwc:elseif={hasNoMatchingVehicles}>
+            <p class="slds-var-m-top_medium">
+              No vehicles match the selected filters.
+            </p>
+          </template>
+        </section>
+      </template>
+    </div>
+  </lightning-card>
+</template>
