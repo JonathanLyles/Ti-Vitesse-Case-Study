@@ -137,6 +137,18 @@ public without sharing class VehicleLoanController {
     }
   }
 
+  @AuraEnabled(cacheable=true)
+  public static List<Vehicle__c> getVehicles() {
+    return [
+      SELECT Id, Make__c, Model__c
+      FROM Vehicle__c
+      WHERE
+        Loan_Active__c = FALSE
+        AND RecordType.DeveloperName = :LOAN_VEHICLE_RECORD_TYPE
+      WITH USER_MODE
+    ];
+  }
+
   @AuraEnabled
   public static VehicleLoanActionResult returnVehicle(
     Id caseId,
