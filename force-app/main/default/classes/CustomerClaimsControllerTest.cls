@@ -332,9 +332,10 @@ private class CustomerClaimsControllerTest {
 
     Assert.isNull(claims, 'No data should be returned');
     Assert.isNotNull(message, 'A user without the permission set is rejected');
-    Assert.isTrue(
-      message.startsWith('Your claims could not be loaded'),
-      'Error should explain the claims could not be loaded: ' + message
+    Assert.areEqual(
+      'Your claims could not be loaded. Please try again or contact your administrator.',
+      message,
+      'The error should be clear without exposing query details'
     );
   }
 

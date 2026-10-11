@@ -406,8 +406,13 @@ private class VehicleClaimControllerTest {
       'Error should explain the claim was not submitted'
     );
     Assert.isTrue(
-      message.contains('Model'),
-      'Claim should fail because Model is missing: ' + message
+      !message.contains('Model'),
+      'The user-facing error should not expose the underlying DML details'
+    );
+    Assert.areEqual(
+      'Your claim could not be submitted. Please check your information and try again, or contact your administrator.',
+      message,
+      'A failed insert should return a stable safe message'
     );
     assertNothingSaved();
   }
@@ -465,7 +470,46 @@ private class VehicleClaimControllerTest {
     assertNothingSaved();
   }
 
+  @IsTest
+  static void reportsMissingRecordTypeConfigurationSafely() {
+    assertMissingRecordTypeConfiguration(
+      Schema.SObjectType.Case,
+      'Missing_Vehicle_Claims',
+      'Vehicle Claims'
+    );
+    assertMissingRecordTypeConfiguration(
+      Schema.SObjectType.Vehicle__c,
+      'Missing_Damaged_Vehicle',
+      'Damaged Vehicle'
+    );
+  }
+
   // ---------- Helpers ----------
+
+  private static void assertMissingRecordTypeConfiguration(
+    Schema.DescribeSObjectResult objectType,
+    String developerName,
+    String recordTypeLabel
+  ) {
+    String message;
+    try {
+      VehicleClaimController.getRequiredRecordTypeId(
+        objectType,
+        developerName,
+        recordTypeLabel
+      );
+    } catch (AuraHandledException e) {
+      message = e.getMessage();
+    }
+
+    Assert.areEqual(
+      'Required Salesforce record type configuration is missing: ' +
+        recordTypeLabel +
+        '. Please contact your administrator.',
+      message,
+      'A missing required record type should produce a safe configuration error'
+    );
+  }
 
   private static User getUser(String username) {
     return [SELECT Id FROM User WHERE Username = :username];

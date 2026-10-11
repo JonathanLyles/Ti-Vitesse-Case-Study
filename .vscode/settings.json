@@ -13,5 +13,15 @@
     "**/Thumbs.db": true,
     ".mule": true
   },
+  "editor.formatOnSave": true,
+  "[apex]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
   "xml.preferences.showSchemaDocumentationType": "none"
 }

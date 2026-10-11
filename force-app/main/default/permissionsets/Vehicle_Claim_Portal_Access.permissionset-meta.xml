@@ -12,6 +12,10 @@
         <apexClass>VehicleClaimController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>VehicleLoanController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <fieldPermissions>
         <editable>true</editable>
         <field>Case.Damage_Detail__c</field>
@@ -47,6 +51,21 @@
         <field>Vehicle__c.Registration_number__c</field>
         <readable>true</readable>
     </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Vehicle__c.Loan_Active__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Vehicle__c.Loan_End_Date__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Vehicle__c.Year_of_Vehicle__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
     <objectPermissions>
         <allowCreate>true</allowCreate>
         <allowDelete>false</allowDelete>
@@ -71,6 +90,10 @@
     </recordTypeVisibilities>
     <recordTypeVisibilities>
         <recordType>Vehicle__c.Damaged_Vehicle</recordType>
+        <visible>true</visible>
+    </recordTypeVisibilities>
+    <recordTypeVisibilities>
+        <recordType>Vehicle__c.Loan_Vehicle</recordType>
         <visible>true</visible>
     </recordTypeVisibilities>
 </PermissionSet>

@@ -28,8 +28,8 @@
     "eslint-plugin-jest": "^28.14.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.2",
-    "prettier": "^3.5.3",
-    "prettier-plugin-apex": "^2.2.6"
+    "prettier": "^3.9.9",
+    "prettier-plugin-apex": "^2.3.0"
   },
   "lint-staged": {
     "**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}": [
@@ -39,7 +39,7 @@
       "eslint"
     ],
     "**/lwc/**": [
-        "sfdx-lwc-jest -- --bail --findRelatedTests --passWithNoTests"
+      "sfdx-lwc-jest -- --bail --findRelatedTests --passWithNoTests"
     ]
   }
 }
