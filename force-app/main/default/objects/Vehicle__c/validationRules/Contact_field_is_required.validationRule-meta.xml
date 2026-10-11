@@ -3,7 +3,8 @@
     <fullName>Contact_field_is_required</fullName>
     <active>true</active>
     <description
-  >Validation rules checks if contact field has been set.</description>
-    <errorConditionFormula>ISBLANK( Contact__c )</errorConditionFormula>
+  >Checks if a damaged vehicle has a contact. Does not apply to loan vehicles.</description>
+    <errorConditionFormula
+  >AND( RecordType.DeveloperName = 'Damaged_Vehicle', ISBLANK( Contact__c ) )</errorConditionFormula>
     <errorMessage>Contact is required</errorMessage>
 </ValidationRule>
