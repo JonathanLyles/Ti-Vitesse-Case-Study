@@ -21,6 +21,7 @@ public with sharing class CustomerClaimsController {
       SELECT ContactId
       FROM User
       WHERE Id = :UserInfo.getUserId()
+      WITH USER_MODE
     ]
     .ContactId;
     if (contactId == null) {

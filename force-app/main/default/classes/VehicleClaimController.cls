@@ -43,6 +43,7 @@ public with sharing class VehicleClaimController {
       SELECT ContactId, Contact.AccountId
       FROM User
       WHERE Id = :UserInfo.getUserId()
+      WITH USER_MODE
     ];
     if (currentUser.ContactId == null) {
       throw buildError('A claim must be submitted for a customer.');
