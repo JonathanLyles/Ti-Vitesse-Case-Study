@@ -49,3 +49,6 @@ $RECYCLE.BIN/
 **/__pycache__/
 **/.venv/
 **/venv/
+
+# Org-specific callout settings record (contains credentials)
+force-app/main/default/customMetadata/
