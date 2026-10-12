@@ -404,6 +404,239 @@ private class VehicleLoanControllerTest {
     );
   }
 
+  @IsTest
+  static void reportsFriendlyErrorWhenAvailableVehiclesCannotBeLoaded() {
+    User customer = getCustomer();
+    Case vehicleCase = getActiveCase();
+    Test.setMock(HttpCalloutMock.class, new VehicleServiceDownMock());
+
+    String message;
+    System.runAs(customer) {
+      Test.startTest();
+      try {
+        VehicleLoanController.getLoanContext(vehicleCase.Id);
+      } catch (AuraHandledException error) {
+        message = error.getMessage();
+      }
+      Test.stopTest();
+    }
+
+    Assert.areEqual(
+      'Available vehicles could not be loaded. Please try again.',
+      message
+    );
+  }
+
+  @IsTest
+  static void reservationFailsGracefullyWhenVehicleListIsUnavailable() {
+    User customer = getCustomer();
+    Case vehicleCase = getActiveCase();
+    Test.setMock(HttpCalloutMock.class, new VehicleServiceDownMock());
+
+    String message;
+    System.runAs(customer) {
+      Test.startTest();
+      try {
+        VehicleLoanController.reserveVehicle(
+          vehicleCase.Id,
+          'REG 123',
+          42000,
+          1600
+        );
+      } catch (AuraHandledException error) {
+        message = error.getMessage();
+      }
+      Test.stopTest();
+    }
+
+    Assert.areEqual(
+      'The vehicle reservation could not be completed. Please try again.',
+      message
+    );
+    Assert.areEqual(
+      0,
+      [SELECT COUNT() FROM Vehicle__c WHERE Contact__c = :customer.ContactId]
+    );
+  }
+
+  @IsTest
+  static void reservationFailsGracefullyWhenReserveCallIsRejected() {
+    User customer = getCustomer();
+    Case vehicleCase = getActiveCase();
+    LoanApiMock mock = new LoanApiMock(503);
+    Test.setMock(HttpCalloutMock.class, mock);
+
+    String message;
+    System.runAs(customer) {
+      Test.startTest();
+      try {
+        VehicleLoanController.reserveVehicle(
+          vehicleCase.Id,
+          'REG 123',
+          42000,
+          1600
+        );
+      } catch (AuraHandledException error) {
+        message = error.getMessage();
+      }
+      Test.stopTest();
+    }
+
+    Assert.areEqual(
+      'The vehicle reservation could not be completed. Please try again.',
+      message
+    );
+    Assert.areEqual(1, mock.reservationCount);
+    Assert.areEqual(
+      0,
+      [SELECT COUNT() FROM Vehicle__c WHERE Contact__c = :customer.ContactId],
+      'No local loan record may exist when the remote reservation fails'
+    );
+  }
+
+  @IsTest
+  static void rejectsReservationWithoutASelectedVehicle() {
+    User customer = getCustomer();
+    Case vehicleCase = getActiveCase();
+    Test.setMock(HttpCalloutMock.class, new UnexpectedCalloutMock());
+
+    String message;
+    System.runAs(customer) {
+      try {
+        VehicleLoanController.reserveVehicle(vehicleCase.Id, ' ', 42000, 1600);
+      } catch (AuraHandledException error) {
+        message = error.getMessage();
+      }
+    }
+
+    Assert.areEqual(
+      'Select a vehicle before requesting a reservation.',
+      message
+    );
+  }
+
+  @IsTest
+  static void rejectsReturnWithoutASelectedLoan() {
+    User customer = getCustomer();
+    Case vehicleCase = getActiveCase();
+    Test.setMock(HttpCalloutMock.class, new UnexpectedCalloutMock());
+
+    String message;
+    System.runAs(customer) {
+      try {
+        VehicleLoanController.returnVehicle(vehicleCase.Id, null);
+      } catch (AuraHandledException error) {
+        message = error.getMessage();
+      }
+    }
+
+    Assert.areEqual(
+      'Select an active loan before returning a vehicle.',
+      message
+    );
+  }
+
+  @IsTest
+  static void rejectsReturnOfALoanThatIsNoLongerActive() {
+    User customer = getCustomer();
+    Case vehicleCase = getActiveCase();
+    Vehicle__c loan = createActiveLoan(vehicleCase, customer.ContactId);
+    loan.Loan_Active__c = false;
+    Database.update(loan, AccessLevel.SYSTEM_MODE);
+    Test.setMock(HttpCalloutMock.class, new UnexpectedCalloutMock());
+
+    String message;
+    System.runAs(customer) {
+      try {
+        VehicleLoanController.returnVehicle(vehicleCase.Id, loan.Id);
+      } catch (AuraHandledException error) {
+        message = error.getMessage();
+      }
+    }
+
+    Assert.areEqual(
+      'You are not authorized to access this active vehicle claim.',
+      message
+    );
+  }
+
+  @IsTest
+  static void rejectsRequestWithoutACaseId() {
+    User customer = getCustomer();
+    Test.setMock(HttpCalloutMock.class, new UnexpectedCalloutMock());
+
+    String message;
+    System.runAs(customer) {
+      try {
+        VehicleLoanController.getLoanContext(null);
+      } catch (AuraHandledException error) {
+        message = error.getMessage();
+      }
+    }
+
+    Assert.areEqual(
+      'You are not authorized to access this active vehicle claim.',
+      message
+    );
+  }
+
+  @IsTest
+  static void rejectsContextWhenContactHasMoreThanOneActiveLoan() {
+    User customer = getCustomer();
+    Case vehicleCase = getActiveCase();
+    Vehicle__c firstLoan = createActiveLoan(vehicleCase, customer.ContactId);
+    Vehicle__c secondLoan = firstLoan.clone(false, true, false, false);
+    secondLoan.Registration_number__c = 'REG 456';
+    Database.insert(secondLoan, AccessLevel.SYSTEM_MODE);
+    Test.setMock(HttpCalloutMock.class, new UnexpectedCalloutMock());
+
+    String message;
+    System.runAs(customer) {
+      try {
+        VehicleLoanController.getLoanContext(vehicleCase.Id);
+      } catch (AuraHandledException error) {
+        message = error.getMessage();
+      }
+    }
+
+    Assert.areEqual(
+      'More than one active loan exists for this Contact. Contact support.',
+      message
+    );
+  }
+
+  @IsTest
+  static void reservationReportsIncompleteVehicleDetailsFromTheService() {
+    User customer = getCustomer();
+    Case vehicleCase = getActiveCase();
+    Test.setMock(HttpCalloutMock.class, new LoanApiMock(200, ''));
+
+    String message;
+    System.runAs(customer) {
+      Test.startTest();
+      try {
+        VehicleLoanController.reserveVehicle(
+          vehicleCase.Id,
+          'REG 123',
+          42000,
+          1600
+        );
+      } catch (AuraHandledException error) {
+        message = error.getMessage();
+      }
+      Test.stopTest();
+    }
+
+    Assert.areEqual(
+      'The selected vehicle details are incomplete. Please contact support.',
+      message
+    );
+    Assert.areEqual(
+      0,
+      [SELECT COUNT() FROM Vehicle__c WHERE Contact__c = :customer.ContactId]
+    );
+  }
+
   private static Case getActiveCase() {
     return [
       SELECT Id, ContactId
@@ -466,6 +699,31 @@ private class VehicleLoanControllerTest {
     public HttpResponse respond(HttpRequest request) {
       Assert.fail('The unauthorized operation must not make a callout.');
       return new HttpResponse();
+    }
+  }
+
+  private class VehicleServiceDownMock implements HttpCalloutMock {
+    private VehicleServiceDownMock() {
+      VehicleLoanApiClient.setTestOAuthSettings(
+        'password',
+        'test-client-id',
+        'test-client-secret',
+        'test-user',
+        'test-password',
+        'test-token'
+      );
+    }
+
+    public HttpResponse respond(HttpRequest request) {
+      HttpResponse response = new HttpResponse();
+      if (request.getEndpoint() == 'callout:TiVitesseBearerToken') {
+        response.setStatusCode(200);
+        response.setBody('{"access_token":"test-access-token"}');
+      } else {
+        response.setStatusCode(500);
+        response.setBody('service unavailable');
+      }
+      return response;
     }
   }
 

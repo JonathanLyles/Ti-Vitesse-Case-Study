@@ -204,6 +204,142 @@ private class VehicleLoanApiClientTest {
     );
   }
 
+  @IsTest
+  static void reportsNetworkFailureWhenLoadingVehicles() {
+    setFakeOAuthSettings();
+    Test.setMock(HttpCalloutMock.class, new NetworkFailureMock(false));
+
+    String errorMessage;
+    try {
+      new VehicleLoanApiClient().getVehicles();
+    } catch (CalloutException error) {
+      errorMessage = error.getMessage();
+    }
+
+    Assert.areEqual('Vehicle request failed.', errorMessage);
+  }
+
+  @IsTest
+  static void reportsNetworkFailureWhenUpdatingVehicle() {
+    setFakeOAuthSettings();
+    Test.setMock(HttpCalloutMock.class, new NetworkFailureMock(false));
+
+    String errorMessage;
+    try {
+      new VehicleLoanApiClient().updateVehicle('7897NV15');
+    } catch (CalloutException error) {
+      errorMessage = error.getMessage();
+    }
+
+    Assert.areEqual('Vehicle update request failed.', errorMessage);
+  }
+
+  @IsTest
+  static void reportsNetworkFailureWhenRequestingToken() {
+    setFakeOAuthSettings();
+    Test.setMock(HttpCalloutMock.class, new NetworkFailureMock(true));
+
+    String errorMessage;
+    try {
+      new VehicleLoanApiClient().getVehicles();
+    } catch (CalloutException error) {
+      errorMessage = error.getMessage();
+    }
+
+    Assert.areEqual('OAuth token request failed.', errorMessage);
+  }
+
+  @IsTest
+  static void rejectsVehicleResponseThatIsNotJson() {
+    String errorMessage = getVehiclesError('not JSON');
+
+    Assert.areEqual(
+      'Vehicle response did not contain a valid JSON array.',
+      errorMessage
+    );
+  }
+
+  @IsTest
+  static void rejectsVehicleResponseThatIsNotAnArray() {
+    String errorMessage = getVehiclesError('{"RegistrationNumber":"7897NV15"}');
+
+    Assert.areEqual(
+      'Vehicle response did not contain a valid JSON array.',
+      errorMessage
+    );
+  }
+
+  @IsTest
+  static void rejectsVehicleResponseThatIsJsonNull() {
+    String errorMessage = getVehiclesError('null');
+
+    Assert.areEqual(
+      'Vehicle response did not contain a JSON array.',
+      errorMessage
+    );
+  }
+
+  @IsTest
+  static void rejectsTokenResponseThatIsNotAnObject() {
+    String errorMessage = getTokenError('[1,2]');
+
+    Assert.areEqual(
+      'OAuth token response did not have the expected JSON structure.',
+      errorMessage
+    );
+  }
+
+  @IsTest
+  static void rejectsTokenResponseThatIsJsonNull() {
+    String errorMessage = getTokenError('null');
+
+    Assert.areEqual(
+      'OAuth token response did not contain an access_token.',
+      errorMessage
+    );
+  }
+
+  @IsTest
+  static void rejectsTokenResponseWithBlankAccessToken() {
+    String errorMessage = getTokenError('{"access_token":"  "}');
+
+    Assert.areEqual(
+      'OAuth token response did not contain an access_token.',
+      errorMessage
+    );
+  }
+
+  private static String getVehiclesError(String vehicleResponseBody) {
+    setFakeOAuthSettings();
+    SequentialCalloutMock mock = new SequentialCalloutMock();
+    mock.addTokenResponse(200, '{"access_token":"' + ACCESS_TOKEN + '"}');
+    mock.addVehicleResponse(200, vehicleResponseBody);
+    Test.setMock(HttpCalloutMock.class, mock);
+
+    String errorMessage;
+    try {
+      new VehicleLoanApiClient().getVehicles();
+    } catch (CalloutException error) {
+      errorMessage = error.getMessage();
+    }
+    return errorMessage;
+  }
+
+  private static String getTokenError(String tokenResponseBody) {
+    setFakeOAuthSettings();
+    SequentialCalloutMock mock = new SequentialCalloutMock();
+    mock.addTokenResponse(200, tokenResponseBody);
+    Test.setMock(HttpCalloutMock.class, mock);
+
+    String errorMessage;
+    try {
+      new VehicleLoanApiClient().getVehicles();
+    } catch (CalloutException error) {
+      errorMessage = error.getMessage();
+    }
+    return errorMessage;
+  }
+
   private static void setFakeOAuthSettings() {
     VehicleLoanApiClient.setTestOAuthSettings(
       'password',
@@ -219,6 +355,26 @@ private class VehicleLoanApiClientTest {
     public HttpResponse respond(HttpRequest request) {
       Assert.fail('Invalid input must be rejected before a callout.');
       return new HttpResponse();
+    }
+  }
+
+  private class NetworkFailureMock implements HttpCalloutMock {
+    private Boolean failTokenRequest;
+
+    private NetworkFailureMock(Boolean failTokenRequest) {
+      this.failTokenRequest = failTokenRequest;
+    }
+
+    public HttpResponse respond(HttpRequest request) {
+      Boolean isTokenRequest =
+        request.getEndpoint() == 'callout:TiVitesseBearerToken';
+      if (isTokenRequest && !failTokenRequest) {
+        HttpResponse response = new HttpResponse();
+        response.setStatusCode(200);
+        response.setBody('{"access_token":"' + ACCESS_TOKEN + '"}');
+        return response;
+      }
+      throw new CalloutException('Simulated network failure.');
     }
   }
 
