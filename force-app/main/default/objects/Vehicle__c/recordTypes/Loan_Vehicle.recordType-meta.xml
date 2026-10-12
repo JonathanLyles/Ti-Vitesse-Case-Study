@@ -5,13 +5,92 @@
     <description>Represents vehicles loaned to customers</description>
     <label>Loan Vehicle</label>
     <picklistValues>
-        <picklist>Make__c</picklist>
+        <picklist>Colour__c</picklist>
         <values>
-            <fullName>Abarth</fullName>
+            <fullName>Beige</fullName>
             <default>false</default>
         </values>
         <values>
+            <fullName>Black</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Blue</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Brown</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Green</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Grey</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Metalic</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Multicolour</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Orange</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Other</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Purple</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Red</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Unknown</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>White</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Yellow</fullName>
+            <default>false</default>
+        </values>
+    </picklistValues>
+    <picklistValues>
+        <picklist>Make__c</picklist>
+        <values>
             <fullName>AC</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>AMC</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>AMG</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>APAL</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>ARO</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Abarth</fullName>
             <default>false</default>
         </values>
         <values>
@@ -31,23 +110,7 @@
             <default>false</default>
         </values>
         <values>
-            <fullName>AMC</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>AMG</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>APAL</fullName>
-            <default>false</default>
-        </values>
-        <values>
             <fullName>Ariel</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>ARO</fullName>
             <default>false</default>
         </values>
         <values>
@@ -71,6 +134,10 @@
             <default>false</default>
         </values>
         <values>
+            <fullName>BMW</fullName>
+            <default>false</default>
+        </values>
+        <values>
             <fullName>Bauchet</fullName>
             <default>false</default>
         </values>
@@ -83,10 +150,6 @@
             <default>false</default>
         </values>
         <values>
-            <fullName>BMW</fullName>
-            <default>false</default>
-        </values>
-        <values>
             <fullName>Bristol</fullName>
             <default>false</default>
         </values>
@@ -96,6 +159,10 @@
         </values>
         <values>
             <fullName>Buick</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>COURB</fullName>
             <default>false</default>
         </values>
         <values>
@@ -127,7 +194,11 @@
             <default>false</default>
         </values>
         <values>
-            <fullName>COURB</fullName>
+            <fullName>DAF</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>DS Automobiles</fullName>
             <default>false</default>
         </values>
         <values>
@@ -136,10 +207,6 @@
         </values>
         <values>
             <fullName>Daewoo</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>DAF</fullName>
             <default>false</default>
         </values>
         <values>
@@ -163,11 +230,11 @@
             <default>false</default>
         </values>
         <values>
-            <fullName>DeLorean</fullName>
+            <fullName>De Tomaso</fullName>
             <default>false</default>
         </values>
         <values>
-            <fullName>De Tomaso</fullName>
+            <fullName>DeLorean</fullName>
             <default>false</default>
         </values>
         <values>
@@ -179,19 +246,11 @@
             <default>false</default>
         </values>
         <values>
-            <fullName>DS Automobiles</fullName>
-            <default>false</default>
-        </values>
-        <values>
             <fullName>Eagle</fullName>
             <default>false</default>
         </values>
         <values>
             <fullName>Exagon</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>Ferrari</fullName>
             <default>false</default>
         </values>
         <values>
@@ -207,11 +266,15 @@
             <default>false</default>
         </values>
         <values>
-            <fullName>Gillet</fullName>
+            <fullName>Ferrari</fullName>
             <default>false</default>
         </values>
         <values>
             <fullName>GMC</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Gillet</fullName>
             <default>false</default>
         </values>
         <values>
@@ -247,11 +310,11 @@
             <default>false</default>
         </values>
         <values>
-            <fullName>Jaguar</fullName>
+            <fullName>JEEP</fullName>
             <default>false</default>
         </values>
         <values>
-            <fullName>JEEP</fullName>
+            <fullName>Jaguar</fullName>
             <default>false</default>
         </values>
         <values>
@@ -260,6 +323,10 @@
         </values>
         <values>
             <fullName>LADA</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>LDV</fullName>
             <default>false</default>
         </values>
         <values>
@@ -275,10 +342,6 @@
             <default>false</default>
         </values>
         <values>
-            <fullName>LDV</fullName>
-            <default>false</default>
-        </values>
-        <values>
             <fullName>Lexus</fullName>
             <default>false</default>
         </values>
@@ -288,6 +351,18 @@
         </values>
         <values>
             <fullName>Lotus</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>MEGA</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>MG</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>MINI</fullName>
             <default>false</default>
         </values>
         <values>
@@ -323,23 +398,11 @@
             <default>false</default>
         </values>
         <values>
-            <fullName>MEGA</fullName>
-            <default>false</default>
-        </values>
-        <values>
             <fullName>Mercedes Benz</fullName>
             <default>false</default>
         </values>
         <values>
             <fullName>Mercury</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>MG</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>MINI</fullName>
             <default>false</default>
         </values>
         <values>
@@ -363,11 +426,15 @@
             <default>false</default>
         </values>
         <values>
+            <fullName>OPEL</fullName>
+            <default>false</default>
+        </values>
+        <values>
             <fullName>Oldsmobile</fullName>
             <default>false</default>
         </values>
         <values>
-            <fullName>OPEL</fullName>
+            <fullName>PGO</fullName>
             <default>false</default>
         </values>
         <values>
@@ -376,10 +443,6 @@
         </values>
         <values>
             <fullName>Peugeot</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>PGO</fullName>
             <default>false</default>
         </values>
         <values>
@@ -419,6 +482,10 @@
             <default>false</default>
         </values>
         <values>
+            <fullName>SEAT</fullName>
+            <default>false</default>
+        </values>
+        <values>
             <fullName>Samsung</fullName>
             <default>false</default>
         </values>
@@ -428,10 +495,6 @@
         </values>
         <values>
             <fullName>Saturn</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>SEAT</fullName>
             <default>false</default>
         </values>
         <values>
@@ -467,11 +530,15 @@
             <default>false</default>
         </values>
         <values>
-            <fullName>Talbot</fullName>
+            <fullName>TATA</fullName>
             <default>false</default>
         </values>
         <values>
-            <fullName>TATA</fullName>
+            <fullName>TVR</fullName>
+            <default>false</default>
+        </values>
+        <values>
+            <fullName>Talbot</fullName>
             <default>false</default>
         </values>
         <values>
@@ -488,10 +555,6 @@
         </values>
         <values>
             <fullName>Triumph</fullName>
-            <default>false</default>
-        </values>
-        <values>
-            <fullName>TVR</fullName>
             <default>false</default>
         </values>
         <values>
@@ -527,11 +590,11 @@
             <default>false</default>
         </values>
         <values>
-            <fullName>Zastava</fullName>
+            <fullName>ZAZ</fullName>
             <default>false</default>
         </values>
         <values>
-            <fullName>ZAZ</fullName>
+            <fullName>Zastava</fullName>
             <default>false</default>
         </values>
     </picklistValues>
