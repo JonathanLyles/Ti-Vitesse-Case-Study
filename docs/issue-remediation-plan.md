@@ -3,7 +3,7 @@
 Problems found while cleaning up the Ti-Vitesse case study, with the fix, acceptance criteria, effort and status for each. This file in the repo is the master copy.
 
 ## Context
-The cleanup left `main` deployable but with known loose ends. **Status as of 2026-10-12:** Issues 1, 2B, 2C (replaced by accept-and-document), 3, 4 (same), 5 and 6 are done. Still open: Issue 9 (sf-verify hook), Issues 7 and 8 (vehicle loan component). This plan lists each issue, what to do, how big it is, and the order to tackle them. Each remaining item gets its own branch from `main`.
+The cleanup left `main` deployable but with known loose ends. **Status as of 2026-10-12:** Issues 1, 2B, 2C (replaced by accept-and-document), 3, 4 (same), 5, 6 and 9 are done. Still open: Issues 7 and 8 (vehicle loan component). This plan lists each issue, what to do, how big it is, and the order to tackle them. Each remaining item gets its own branch from `main`.
 
 Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or more.
 
@@ -152,11 +152,19 @@ Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or mor
 7. **Suite and scans:** full Apex suite 0 failures, coverage at or above 85%, no new High findings.
 8. **Delivery:** own branch from `main`, reviewed before commit, merged and pushed after approval; plan updated.
 
-### 9. sf-verify Stop hook (in `stash@{0}`)
+### 9. sf-verify Stop hook (was in `stash@{0}`, now restored)
 - **Summary:** the skill and hook script are stashed (4 files: `.claude/hooks/verify-on-stop.sh`, `.claude/skills/sf-verify/{SKILL.md,reference.md,scripts/check.sh}`). `check.sh` runs four gates: `apex-tests`, `lwc-tests`, `static-analysis` (fails at severity 2 or worse) and `tests-not-weakened`. The hook is not wired in `settings.local.json`. One thing blocks a green run today: the High finding at `VehicleLoanApiClient.cls:186` (the metadata query) still fails `static-analysis`.
 - **Proposed solution (decided 2026-10-12: try USER_MODE first):** (1) restore the stash. (2) Add `WITH USER_MODE` to the metadata query. Portal customers and agents already hold the type access from Issue 1, so it should pass; if it does, no suppression is needed and the finding is fixed rather than hidden. (3) Only if user mode breaks the tests or the live call, fall back to a documented `@SuppressWarnings('PMD.ApexCRUDViolation')` whose reason is true (a single known record, read by design). Do not claim the secrets are "protected from users", because Issue 1 gave users read access. (4) Run `check.sh` and confirm all four gates PASS. (5) Wire the Stop hook in `.claude/settings.local.json`. (6) Prove it works: a deliberately broken change blocks the stop; a clean one does not.
 - **Open points to watch:** the hook runs the full Apex suite on every stop that touched `force-app`, which takes minutes; restrict it if too slow. `check.sh` and the hook run under Git Bash, where some `sf` commands misbehave (a deploy from Git Bash failed with a `C:\Program` path error on 2026-10-12), so the negative test in criterion 5 doubles as a check that the hook's shell works.
 - **Effort:** S.
+
+**STATUS: DONE (2026-10-12), branch `chore/issue-9-sf-verify-hook`.**
+- **Static analysis:** `WITH USER_MODE` on the metadata query passed, so no suppression was needed. High findings are now 0. The settings query is not run as a portal user by any unit test (they inject fake settings), so a throwaway test (deleted afterwards) ran the same query as a real portal customer holding `Vehicle_Claim_Portal_Access`, as an agent given `Vehicle_Loan_Internal_Access`, and as admin. All three read the record with the secret fields non-blank. The read-only live call (OAuth token + `getVehicles`) returned 10 vehicles.
+- **Two bugs found and fixed in the stashed files:** (1) from Git Bash, `sf` exits 1 even on success (`sf --version` included), so `check.sh` reported `apex-tests` and `static-analysis` FAIL while they passed; `check.sh` now goes through `cmd //c sf` on Windows. (2) `jq` is not installed, so the hook's loop guard silently did nothing; it now uses `grep`.
+- **Gates:** `bash .claude/skills/sf-verify/scripts/check.sh` prints PASS for all four gates (109 tests, 0 failures, org-wide coverage 85%).
+- **Hook tests:** loop guard exits 0 instantly. A clean change exits 0. A test with an assertion removed exits 2 and prints `GATE tests-not-weakened: FAIL`; after restoring the file the stop is allowed. A clean checkout of `main` exits 0 in under a second without running anything.
+- **Run time:** one full verification took 66 s and another 225 s. Decision: keep the hook as is for now; restrict it if it gets in the way.
+- **Wiring:** the Stop hook is in `.claude/settings.local.json`, which is gitignored, so it applies on this machine only. Another machine needs the same entry.
 
 **Acceptance criteria for Issue 9. Done when, all of these hold:**
 1. `git stash pop` restores the 4 files; the stash is dropped and `git stash list` is empty. Nothing else in the working tree changes.
@@ -175,8 +183,8 @@ Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or mor
 4. ~~**Issue 5**~~ **DONE** (`e240cb1`). Both loan classes at 89%.
 5. ~~**Issue 3**~~ **DONE** (`a8fb0ad`, pushed). High findings now 1.
 6. ~~**Issue 6**~~ **DONE** (`f7e62d9`). `Vehicle__c` object, fields, layouts, rules and `Case_Record_Page` now in source.
-7. **Issue 9** (S, **NEXT**). Restore the stash, make the last High finding pass (try `WITH USER_MODE` first), wire the hook, re-run `check.sh`.
-8. **Issue 7** (S). Decide and remove or rescope the local `getVehicles()`.
+7. ~~**Issue 9**~~ **DONE** (branch `chore/issue-9-sf-verify-hook`). Metadata query in user mode, all four gates PASS, Stop hook wired locally.
+8. **Issue 7** (S, **NEXT**). Decide and remove or rescope the local `getVehicles()`.
 9. **Issue 8a** (L to M), then **Issue 8b** (M). Internal component, then the customer site and the live test.
 
 Each remaining item gets its own branch from the current `main`, reviewed before commit, merged and pushed after approval.
@@ -191,6 +199,7 @@ Each remaining item gets its own branch from the current `main`, reviewed before
 - 2026-10-12: Issue 8 is split into 8a (internal) and 8b (customer site and live test).
 - 2026-10-12: this plan lives in the repo as `docs/issue-remediation-plan.md`, the master copy.
 - 2026-10-12: Issue 6 retrieves the whole `Vehicle__c` object and `Case_Record_Page`; the Experience Cloud template classes are ignored.
+- 2026-10-12: Issue 9 finished with `WITH USER_MODE` (no suppression). The hook's wiring stays in the gitignored `.claude/settings.local.json`.
 - **Pending:** Issue 7 option (A, B or C; A recommended).
 
 ## Parked (not scheduled)

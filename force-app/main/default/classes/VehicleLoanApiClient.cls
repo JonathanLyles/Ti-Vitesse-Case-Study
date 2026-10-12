@@ -193,6 +193,7 @@ public with sharing class VehicleLoanApiClient {
         securityToken__c
       FROM TiVitesse_Callout_Setting__mdt
       WHERE DeveloperName = 'default'
+      WITH USER_MODE
       LIMIT 1
     ];
     if (settings.isEmpty()) {
