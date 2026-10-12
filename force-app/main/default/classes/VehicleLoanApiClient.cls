@@ -3,6 +3,10 @@ public with sharing class VehicleLoanApiClient {
 
   private static OAuthSettings testOAuthSettings;
 
+  // Accepted finding: the remote API (another org) uses an OAuth password grant,
+  // which External Credentials do not support, so the token is requested here
+  // and sent as a Bearer header. See issue/plan notes on Issue 2C.
+  @SuppressWarnings('PMD.ApexSuggestUsingNamedCred')
   public VehicleLoanApiResponse getVehicles() {
     HttpRequest request = new HttpRequest();
     request.setEndpoint('callout:TiVitesseNamedCredential/getVehicles/');
@@ -44,6 +48,10 @@ public with sharing class VehicleLoanApiClient {
     return new VehicleLoanApiResponse(vehicles);
   }
 
+  // Accepted finding: the remote API (another org) uses an OAuth password grant,
+  // which External Credentials do not support, so the token is requested here
+  // and sent as a Bearer header. See issue/plan notes on Issue 2C.
+  @SuppressWarnings('PMD.ApexSuggestUsingNamedCred')
   public void updateVehicle(String registrationNumber) {
     if (String.isBlank(registrationNumber)) {
       throw new CalloutException(
