@@ -16,6 +16,10 @@
         <apexClass>VehicleLoanController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <customMetadataTypeAccesses>
+        <enabled>true</enabled>
+        <name>TiVitesse_Callout_Setting__mdt</name>
+    </customMetadataTypeAccesses>
     <fieldPermissions>
         <editable>true</editable>
         <field>Case.Damage_Detail__c</field>
