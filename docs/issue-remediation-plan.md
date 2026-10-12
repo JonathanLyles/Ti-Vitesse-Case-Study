@@ -3,7 +3,7 @@
 Problems found while cleaning up the Ti-Vitesse case study, with the fix, acceptance criteria, effort and status for each. This file in the repo is the master copy.
 
 ## Context
-The cleanup left `main` deployable but with known loose ends. **Status as of 2026-10-12:** Issues 1, 2B, 2C (replaced by accept-and-document), 3, 4 (same) and 5 are done. Still open: Issue 6 (org-only metadata), Issue 9 (sf-verify hook), Issues 7 and 8 (vehicle loan component). This plan lists each issue, what to do, how big it is, and the order to tackle them. Each remaining item gets its own branch from `main`.
+The cleanup left `main` deployable but with known loose ends. **Status as of 2026-10-12:** Issues 1, 2B, 2C (replaced by accept-and-document), 3, 4 (same), 5 and 6 are done. Still open: Issue 9 (sf-verify hook), Issues 7 and 8 (vehicle loan component). This plan lists each issue, what to do, how big it is, and the order to tackle them. Each remaining item gets its own branch from `main`.
 
 Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or more.
 
@@ -106,6 +106,8 @@ Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or mor
 6. **Referenced fields exist in source.** Every field named in the three rules' formulas (for example the Engine Capacity, Make and Mileage fields on `Vehicle__c`) has its field file in `force-app/main/default/objects/Vehicle__c/fields/`. Any that exist only in the org go into the drift list from criterion 3.
 7. Own branch from `main`, reviewed by you before commit, merged and pushed after approval; plan updated.
 
+**STATUS: DONE (2026-10-12), on `main` as `f7e62d9`.** Criteria 1-7 passed. Retrieved the 3 org-only rules and, by decision, the rest of the `Vehicle__c` object: the object file, 14 fields, 3 layouts, the `All` list view and the 2 record types (the org versions add the `Colour__c` picklist values). Also retrieved `Case_Record_Page`, which in source still pointed at the deleted `loanVehicleLWC`. Drift check result: classes, permission sets, `Vehicle_Record_Page` and the existing rules matched the org apart from formatting; the 28 org-only Experience Cloud template classes (login, registration) and one managed-package class are ignored. A deploy dry run of the retrieved metadata reported 31 components, 0 errors, nothing changed; the full suite stayed at 109 tests, 0 failures. Four files that came back with formatting-only changes (`Loan_Active__c`, `Loan_End_Date__c`, the Case and Contact rules) were left as they were.
+
 ### 7. `getVehicles()` semantics
 - **Summary:** loan records are created at reservation time (`reserveVehicle` inserts a `Loan_Vehicle` with `Loan_Active__c = true`). So `getVehicles()` (`VehicleLoanController.cls:140-150`, `Loan_Active__c = FALSE`, record type `Loan_Vehicle`) returns past, ended loans, not available vehicles. Available vehicles already come from the remote API through `getLoanContext` (`availableVehicles`), which also returns the active loan and `canReturnActiveLoan`. `vehicleLoanLWC` currently wires `getVehicles()`, so it would list old loans as if they were available.
 - **Options:** (A) delete `getVehicles()` and its wire; the component uses `getLoanContext`, `reserveVehicle` and `returnVehicle`. (B) Keep it but turn it into "loan history", renamed `getLoanHistory(caseId)` and scoped to the Contact/Case. (C) Leave it.
@@ -172,8 +174,8 @@ Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or mor
 3. ~~**Issue 2 Part C and issue 4 together**~~ **REPLACED** (`02863cc`): accept and document, no migration.
 4. ~~**Issue 5**~~ **DONE** (`e240cb1`). Both loan classes at 89%.
 5. ~~**Issue 3**~~ **DONE** (`a8fb0ad`, pushed). High findings now 1.
-6. **Issue 6** (S to M, **NEXT**). Retrieve org-only metadata (Vehicle__c validation rules Engine Capacity, Make, Mileage, plus a drift check). Can slot in anywhere.
-7. **Issue 9** (S). Restore the stash, make the last High finding pass (try `WITH USER_MODE` first), wire the hook, re-run `check.sh`.
+6. ~~**Issue 6**~~ **DONE** (`f7e62d9`). `Vehicle__c` object, fields, layouts, rules and `Case_Record_Page` now in source.
+7. **Issue 9** (S, **NEXT**). Restore the stash, make the last High finding pass (try `WITH USER_MODE` first), wire the hook, re-run `check.sh`.
 8. **Issue 7** (S). Decide and remove or rescope the local `getVehicles()`.
 9. **Issue 8a** (L to M), then **Issue 8b** (M). Internal component, then the customer site and the live test.
 
@@ -187,7 +189,9 @@ Each remaining item gets its own branch from the current `main`, reviewed before
 - 2026-10-12: the Named Credential migration (Issues 2C and 4) is dropped. The `ApexSuggestUsingNamedCred` findings are accepted and documented (`02863cc`).
 - 2026-10-12: Issue 9 tries `WITH USER_MODE` on the metadata query before any suppression.
 - 2026-10-12: Issue 8 is split into 8a (internal) and 8b (customer site and live test).
-- **Pending:** Issue 7 option (A, B or C; A recommended). Whether a copy of this plan goes into the repo.
+- 2026-10-12: this plan lives in the repo as `docs/issue-remediation-plan.md`, the master copy.
+- 2026-10-12: Issue 6 retrieves the whole `Vehicle__c` object and `Case_Record_Page`; the Experience Cloud template classes are ignored.
+- **Pending:** Issue 7 option (A, B or C; A recommended).
 
 ## Parked (not scheduled)
 - The `Test.isRunningTest()` branch in `VehicleLoanApiClient.getOAuthSettings()` (line 182) lets tests inject settings. It pre-dates this work. Replacing it with injection is a possible cleanup.
