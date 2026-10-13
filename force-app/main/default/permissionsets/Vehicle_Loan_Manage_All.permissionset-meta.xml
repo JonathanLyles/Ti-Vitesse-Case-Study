@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Vehicle Loan Manage All</label>
+    <description
+  >Lets internal users manage vehicle loans on any active Vehicle Claims Case, not only Contacts they own. Assign together with Vehicle Loan Internal Access.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <customPermissions>
+        <enabled>true</enabled>
+        <name>Manage_All_Vehicle_Loans</name>
+    </customPermissions>
+</PermissionSet>

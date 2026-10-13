@@ -38,9 +38,11 @@ The secured server-side controller shall create and update loan records after
 independently validating the user and Case.
 
 FR-7. The component shall also be available on a Case record page to an
-internal agent who owns the Contact associated with that Case. The agent may
-view, reserve, and return a loan for that Contact, subject to the active Case
-and one-active-loan-per-Contact rules.
+internal agent who owns the Contact associated with that Case, and to an
+internal user granted the `Manage_All_Vehicle_Loans` custom permission (for
+example, administrators or supervisors), whether or not they own the Contact.
+Either user may view, reserve, and return a loan for that Contact, subject to
+the active Case and one-active-loan-per-Contact rules.
 
 ### Reservation
 
@@ -103,8 +105,10 @@ NFR-1. Every server operation that retrieves claim or loan information,
 reserves a vehicle, or returns a vehicle shall independently verify the
 running user's identity and authorization using Salesforce records. For an
 Experience Cloud customer, the Case's `ContactId` must match the running
-user's `ContactId`. For an internal agent, the Case Contact's `OwnerId` must
-match the running user's Id. In either flow, the Case must not be closed,
+user's `ContactId`. For an internal user, either the Case Contact's `OwnerId`
+must match the running user's Id, or the running user must hold the
+`Manage_All_Vehicle_Loans` custom permission. Experience Cloud users are never
+authorized by the custom permission. In every flow, the Case must not be closed,
 reservation must be rejected if the Contact already has an active loan, and a
 return must target an active loan related to that Contact and Case. The server
 shall not trust Case IDs, Contact IDs, registration numbers, loan-active
@@ -113,13 +117,14 @@ flags, or other authorization claims supplied by the browser.
 Hiding or disabling a component in the LWC is only a user-interface behavior;
 it is not an authorization check. A user can bypass the UI and invoke exposed
 server methods directly or alter request values. Therefore, each Apex method
-must derive and verify the running user's Contact or Contact-ownership
-relationship and repeat the Case-status and active-loan checks before
+must derive and verify the running user's Contact, Contact-ownership
+relationship, or custom permission and repeat the Case-status and active-loan checks before
 returning protected data or making a callout.
 
 NFR-2. An Experience Cloud user or internal agent shall not be able to view,
 reserve, or return a vehicle for a Contact, Case, or loan they are not
-authorized to access.
+authorized to access by Contact match, Contact ownership, or the
+`Manage_All_Vehicle_Loans` custom permission.
 
 NFR-3. Authentication secrets and bearer tokens shall not be exposed to the
 browser or included in user-visible errors. Vehicle API authorization shall
@@ -142,8 +147,9 @@ loan.
 **Acceptance criteria**
 
 - Given I am the authenticated customer associated with the Contact on an
-  active `Vehicle_Claims` Case, or an internal agent who owns that Contact,
-  and the Contact has no active vehicle loan, when I open the component, then
+  active `Vehicle_Claims` Case, an internal agent who owns that Contact, or an
+  internal user with the `Manage_All_Vehicle_Loans` custom permission, and the
+  Contact has no active vehicle loan, when I open the component, then
   I can see the available vehicles returned by the service.
 - Given my Case is closed or I do not have an authorized Case, when I open the
   site, then I cannot access that Case's vehicle-loan information or actions.
@@ -174,7 +180,8 @@ vehicle for an active Case so that the customer can use a loan vehicle.
 **Acceptance criteria**
 
 - Given I am the authenticated customer associated with the Contact on an
-  active Case, or an internal agent who owns that Contact, the Contact has no
+  active Case, an internal agent who owns that Contact, or an internal user
+  with the `Manage_All_Vehicle_Loans` custom permission, the Contact has no
   active loan, and I select an available vehicle and enter its mileage and
   engine capacity, when the reservation endpoint returns any HTTP `2xx`
   status, then I see a success confirmation and the active `Loan_Vehicle`
@@ -183,8 +190,9 @@ vehicle for an active Case so that the customer can use a loan vehicle.
 - Given the reservation endpoint returns a non-`2xx` status or the callout
   fails, then I see a failure message and can retry.
 - Given I am neither the authenticated customer associated with the Case
-  Contact nor an internal agent who owns that Contact, when I attempt to
-  reserve a vehicle, then the server rejects the request without reserving it.
+  Contact, an internal agent who owns that Contact, nor an internal user with
+  the `Manage_All_Vehicle_Loans` custom permission, when I attempt to reserve a
+  vehicle, then the server rejects the request without reserving it.
 - Given I submit a registration number, then the server sends it as the
   encoded path segment and does not treat caller-supplied claim access as
   authorization.
@@ -195,15 +203,17 @@ vehicle for an active Case so that the customer can use a loan vehicle.
 
 ### US-4: View and return an existing loan
 
-As a customer with an active vehicle loan, or the internal agent who owns the
-customer's Contact, I want to view the loan and return the vehicle so that the
+As a customer with an active vehicle loan, the internal agent who owns the
+customer's Contact, or an internal user with the `Manage_All_Vehicle_Loans`
+custom permission, I want to view the loan and return the vehicle so that the
 loan can be marked complete while its record remains available for history.
 
 **Acceptance criteria**
 
 - Given my Contact has an active loan associated with an active Case, when I
-  open the component as the customer associated with that Contact or its
-  owning agent, then I can view the existing loan details and access a return
+  open the component as the customer associated with that Contact, its owning
+  agent, or an internal user with the `Manage_All_Vehicle_Loans` custom
+  permission, then I can view the existing loan details and access a return
   action.
 - Given I return the vehicle and the `updateVehicle` callout returns any HTTP
   `2xx` status, then the server sets `Loan_Active__c` to false, sets
@@ -215,7 +225,8 @@ loan can be marked complete while its record remains available for history.
   then the system shall report remote return success separately from the
   local update failure and shall not claim the remote return failed.
 - Given the loan is not associated with my Contact and Case, or I am neither
-  that Contact's customer nor its owning agent, when I attempt to view or
+  that Contact's customer, its owning agent, nor an internal user with the
+  `Manage_All_Vehicle_Loans` custom permission, when I attempt to view or
   return it, then the server rejects the request.
 
 ## Assumptions
@@ -236,6 +247,9 @@ loan can be marked complete while its record remains available for history.
   to match the Case's `ContactId` for the customer-facing workflow.
 - An internal agent is authorized for a Case when the agent owns the Contact
   associated with the Case (`Contact.OwnerId` matches the running user's Id).
+- An internal (`Standard`) user holding the `Manage_All_Vehicle_Loans` custom
+  permission is authorized for any qualifying Case, whoever owns its Contact.
+  The permission is granted by the `Vehicle_Loan_Manage_All` permission set.
 - A Contact may have at most one active vehicle loan at a time, including
   across multiple Cases.
 - A successful reservation shall be represented by a `Vehicle__c` loan record
@@ -263,7 +277,8 @@ loan can be marked complete while its record remains available for history.
   not currently expose vehicle-list or reservation operations.
 - The loan operations are exposed by `VehicleLoanController`, not by the
   claim-creation controller. Its public methods independently authorize the
-  current customer or Contact-owning internal agent and the active Case.
+  current customer, Contact-owning internal agent, or custom-permission holder
+  and the active Case.
 - The API client does not send its own Authorization header. Salesforce
   Named Credential configuration supplies server-side authorization.
 
@@ -284,7 +299,10 @@ loan can be marked complete while its record remains available for history.
   raw service response content.
 - Internal users need the `Vehicle_Loan_Internal_Access` permission set for
   Apex access and loan details; administrators must assign it to authorized
-  agents.
+  agents. Users who manage loans for Contacts they do not own (for example,
+  administrators) also need the `Vehicle_Loan_Manage_All` permission set; it
+  grants only the `Manage_All_Vehicle_Loans` custom permission. Because it
+  widens access to every qualifying Case, assign it sparingly.
 
 ## Open Decisions
 

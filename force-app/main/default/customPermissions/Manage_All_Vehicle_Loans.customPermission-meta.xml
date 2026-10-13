@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description
+  >Lets internal users view, reserve and return vehicle loans for any active Vehicle Claims Case, whoever owns the Case Contact.</description>
+    <isLicensed>false</isLicensed>
+    <label>Manage All Vehicle Loans</label>
+</CustomPermission>
