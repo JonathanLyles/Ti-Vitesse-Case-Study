@@ -1,8 +1,132 @@
 <template>
-  <lightning-card title="Vehicle Loan" icon-name="standard:account">
+  <lightning-card title="Vehicle Loan" icon-name="standard:product_item">
     <div class="slds-var-p-around_medium">
-      Record Id: {recordId} <br />
-      Case Number: {caseNumber}<br />
+      <template lwc:if={isLoading}>
+        <lightning-spinner alternative-text="Loading"></lightning-spinner>
+      </template>
+
+      <template lwc:if={loadError}>
+        <p class="load-error slds-text-color_error">{loadError}</p>
+        <lightning-button
+          class="retry-button slds-var-m-top_small"
+          label="Try again"
+          onclick={loadContext}
+        ></lightning-button>
+      </template>
+
+      <template lwc:if={hasActiveLoan}>
+        <h3 class="slds-text-heading_small">Active loan</h3>
+        <dl class="active-loan slds-var-m-top_small">
+          <dt class="slds-text-title">Registration</dt>
+          <dd class="loan-registration">{activeLoan.Registration_number__c}</dd>
+          <dt class="slds-text-title">Vehicle</dt>
+          <dd>
+            {activeLoan.Make__c} {activeLoan.Model__c}
+            ({activeLoan.Year_of_Vehicle__c})
+          </dd>
+        </dl>
+        <template lwc:if={canReturnActiveLoan}>
+          <lightning-button
+            class="return-button slds-var-m-top_small"
+            variant="brand"
+            label="Return vehicle"
+            onclick={handleReturn}
+          ></lightning-button>
+        </template>
+        <template lwc:else>
+          <p class="other-case slds-var-m-top_small slds-text-color_weak">
+            This loan belongs to another case, so it can only be returned from
+            that case.
+          </p>
+        </template>
+      </template>
+
+      <template lwc:if={showVehicleList}>
+        <template lwc:if={noVehicles}>
+          <p class="no-vehicles">No vehicles are available to loan.</p>
+        </template>
+        <template lwc:else>
+          <ul class="slds-has-dividers_bottom">
+            <template for:each={availableVehicles} for:item="vehicle">
+              <li
+                key={vehicle.registrationNumber}
+                class="vehicle-row slds-item slds-grid slds-grid_vertical-align-center slds-var-p-vertical_x-small"
+              >
+                <div class="slds-col">
+                  <div class="slds-text-body_regular">
+                    {vehicle.make} {vehicle.model} ({vehicle.yearOfVehicle})
+                  </div>
+                  <div class="slds-text-title">
+                    {vehicle.registrationNumber}
+                  </div>
+                </div>
+                <lightning-button
+                  class="reserve-button"
+                  label="Reserve"
+                  data-registration={vehicle.registrationNumber}
+                  onclick={handleReserveClick}
+                ></lightning-button>
+              </li>
+            </template>
+          </ul>
+        </template>
+      </template>
     </div>
   </lightning-card>
+
+  <template lwc:if={isModalOpen}>
+    <section
+      role="dialog"
+      tabindex="-1"
+      aria-modal="true"
+      aria-labelledby="reserve-heading"
+      class="slds-modal slds-fade-in-open"
+    >
+      <div class="slds-modal__container">
+        <header class="slds-modal__header">
+          <h2 id="reserve-heading" class="slds-modal__title">
+            Reserve {selectedVehicle.registrationNumber}
+          </h2>
+        </header>
+        <div class="slds-modal__content slds-var-p-around_medium">
+          <p class="slds-var-m-bottom_small">
+            {selectedVehicle.make} {selectedVehicle.model}
+            ({selectedVehicle.yearOfVehicle})
+          </p>
+          <lightning-input
+            name="mileage"
+            label="Mileage"
+            type="number"
+            min="0"
+            max="999999"
+            step="1"
+            required
+          ></lightning-input>
+          <lightning-input
+            name="engineCapacity"
+            label="Engine capacity"
+            type="number"
+            min="0"
+            max="9999"
+            step="1"
+            required
+          ></lightning-input>
+        </div>
+        <footer class="slds-modal__footer">
+          <lightning-button
+            class="cancel-button slds-var-m-right_x-small"
+            label="Cancel"
+            onclick={handleCancel}
+          ></lightning-button>
+          <lightning-button
+            class="confirm-button"
+            variant="brand"
+            label="Confirm reservation"
+            onclick={handleConfirmReserve}
+          ></lightning-button>
+        </footer>
+      </div>
+    </section>
+    <div class="slds-backdrop slds-backdrop_open"></div>
+  </template>
 </template>
