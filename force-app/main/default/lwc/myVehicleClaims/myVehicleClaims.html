@@ -151,6 +151,13 @@
                   </dl>
                 </section>
               </template>
+
+              <lightning-button
+                label="View claim"
+                data-id={row.id}
+                data-view-claim
+                onclick={handleViewClaim}
+              ></lightning-button>
             </div>
           </li>
         </template>

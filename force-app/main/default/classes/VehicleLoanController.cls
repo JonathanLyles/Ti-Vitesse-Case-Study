@@ -1,27 +1,37 @@
 /**
- * Loan operations are exposed only through methods that first authorize the
- * running user against the Case Contact, or confirm an internal user holds the
- * Manage_All_Vehicle_Loans custom permission. Queries and DML run in system mode
- * so portal users can use this narrowly scoped workflow without direct edit access.
+ * Loan operations work per Contact. Every method first works out the Contact
+ * from the running user: a customer's own Contact (any Case Id from the page is
+ * ignored), or, for an internal user, the Contact of the Case being viewed after
+ * checking Contact ownership or the Manage_All_Vehicle_Loans custom permission.
+ * A reservation is always linked to the Contact's most recent open Vehicle Claims
+ * Case; a return needs only the Contact's active loan. Queries and DML run in
+ * system mode so portal users can use this narrowly scoped workflow without
+ * direct edit access.
  */
 public without sharing class VehicleLoanController {
   private static final String VEHICLE_CLAIMS_RECORD_TYPE = 'Vehicle_Claims';
   private static final String LOAN_VEHICLE_RECORD_TYPE = 'Loan_Vehicle';
   private static final String MANAGE_ALL_PERMISSION = 'Manage_All_Vehicle_Loans';
   private static final String NOT_AUTHORIZED = 'You are not authorized to access this active vehicle claim.';
+  private static final String NO_OPEN_CLAIM = 'You need an open vehicle claim to loan a vehicle.';
 
   @AuraEnabled
   public static VehicleLoanContext getLoanContext(Id caseId) {
-    AuthorizedCase authorizedCase = authorizeCase(caseId);
+    Id contactId = authorizeContact(caseId);
     VehicleLoanContext context = new VehicleLoanContext();
-    List<Vehicle__c> activeLoans = getActiveLoans(authorizedCase.contactId);
+    List<Vehicle__c> activeLoans = getActiveLoans(contactId);
 
     if (!activeLoans.isEmpty()) {
       context.activeLoan = activeLoans[0];
-      context.canReturnActiveLoan =
-        activeLoans[0].Case__c == authorizedCase.caseRecord.Id;
       return context;
     }
+
+    Case latestOpenClaim = getLatestOpenClaim(contactId);
+    if (latestOpenClaim == null) {
+      return context;
+    }
+    context.hasOpenClaim = true;
+    context.claimCaseNumber = latestOpenClaim.CaseNumber;
 
     try {
       for (
@@ -52,7 +62,7 @@ public without sharing class VehicleLoanController {
     Integer mileage,
     Integer engineCapacity
   ) {
-    AuthorizedCase authorizedCase = authorizeCase(caseId);
+    Id contactId = authorizeContact(caseId);
     if (String.isBlank(registrationNumber)) {
       throw buildError('Select a vehicle before requesting a reservation.');
     }
@@ -66,8 +76,12 @@ public without sharing class VehicleLoanController {
     ) {
       throw buildError('Enter a valid mileage and engine capacity.');
     }
-    if (!getActiveLoans(authorizedCase.contactId).isEmpty()) {
+    if (!getActiveLoans(contactId).isEmpty()) {
       throw buildError('This Contact already has an active vehicle loan.');
+    }
+    Case latestOpenClaim = getLatestOpenClaim(contactId);
+    if (latestOpenClaim == null) {
+      throw buildError(NO_OPEN_CLAIM);
     }
 
     VehicleLoanApiResponse.Vehicle selectedVehicle;
@@ -104,8 +118,8 @@ public without sharing class VehicleLoanController {
     try {
       loan = selectedVehicle.toVehicleRecord();
       loan.RecordTypeId = getLoanVehicleRecordTypeId();
-      loan.Case__c = authorizedCase.caseRecord.Id;
-      loan.Contact__c = authorizedCase.contactId;
+      loan.Case__c = latestOpenClaim.Id;
+      loan.Contact__c = contactId;
       loan.Loan_Active__c = true;
       loan.Mileage__c = mileage;
       loan.Engine_Capacity__c = engineCapacity;
@@ -144,18 +158,19 @@ public without sharing class VehicleLoanController {
     Id caseId,
     Id loanVehicleId
   ) {
-    AuthorizedCase authorizedCase = authorizeCase(caseId);
+    Id contactId = authorizeContact(caseId);
     if (loanVehicleId == null) {
       throw buildError('Select an active loan before returning a vehicle.');
     }
 
+    // Matched by Contact only: the loan keeps the Case it was reserved on, and
+    // can be returned even after that Case is closed.
     List<Vehicle__c> matchingLoans = [
       SELECT Id, Registration_number__c
       FROM Vehicle__c
       WHERE
         Id = :loanVehicleId
-        AND Case__c = :authorizedCase.caseRecord.Id
-        AND Contact__c = :authorizedCase.contactId
+        AND Contact__c = :contactId
         AND RecordType.DeveloperName = :LOAN_VEHICLE_RECORD_TYPE
         AND Loan_Active__c = TRUE
       WITH SYSTEM_MODE
@@ -197,13 +212,26 @@ public without sharing class VehicleLoanController {
     }
   }
 
-  private static AuthorizedCase authorizeCase(Id caseId) {
-    if (caseId == null) {
+  // Returns the Contact the running user may manage loans for.
+  private static Id authorizeContact(Id caseId) {
+    User currentUser = [
+      SELECT Id, ContactId, UserType
+      FROM User
+      WHERE Id = :UserInfo.getUserId()
+      WITH SYSTEM_MODE
+    ];
+
+    // A customer always acts for their own Contact, whatever page they are on.
+    if (currentUser.ContactId != null) {
+      return currentUser.ContactId;
+    }
+    if (currentUser.UserType != 'Standard' || caseId == null) {
       throw buildError(NOT_AUTHORIZED);
     }
 
+    // An internal user acts for the Contact of the Case being viewed, open or closed.
     List<Case> cases = [
-      SELECT Id, ContactId, IsClosed, RecordType.DeveloperName
+      SELECT ContactId, Contact.OwnerId, RecordType.DeveloperName
       FROM Case
       WHERE Id = :caseId
       WITH SYSTEM_MODE
@@ -212,44 +240,33 @@ public without sharing class VehicleLoanController {
     if (
       cases.isEmpty() ||
       cases[0].ContactId == null ||
-      cases[0].IsClosed ||
       cases[0].RecordType.DeveloperName != VEHICLE_CLAIMS_RECORD_TYPE
     ) {
       throw buildError(NOT_AUTHORIZED);
     }
-
-    User currentUser = [
-      SELECT Id, ContactId, UserType
-      FROM User
-      WHERE Id = :UserInfo.getUserId()
-      WITH SYSTEM_MODE
-    ];
-    Boolean isCustomer =
-      currentUser.ContactId != null &&
-      currentUser.ContactId == cases[0].ContactId;
-    Boolean isAuthorizedInternalUser = false;
-
-    // Portal users are never authorized by the custom permission.
-    if (currentUser.ContactId == null && currentUser.UserType == 'Standard') {
-      isAuthorizedInternalUser = FeatureManagement.checkPermission(
-        MANAGE_ALL_PERMISSION
-      );
-      if (!isAuthorizedInternalUser) {
-        Contact caseContact = [
-          SELECT OwnerId
-          FROM Contact
-          WHERE Id = :cases[0].ContactId
-          WITH SYSTEM_MODE
-        ];
-        isAuthorizedInternalUser = caseContact.OwnerId == currentUser.Id;
-      }
-    }
-
-    if (!isCustomer && !isAuthorizedInternalUser) {
+    if (
+      !FeatureManagement.checkPermission(MANAGE_ALL_PERMISSION) &&
+      cases[0].Contact.OwnerId != currentUser.Id
+    ) {
       throw buildError(NOT_AUTHORIZED);
     }
+    return cases[0].ContactId;
+  }
 
-    return new AuthorizedCase(cases[0], cases[0].ContactId);
+  // The Contact's most recently submitted open Vehicle Claims Case, or null.
+  private static Case getLatestOpenClaim(Id contactId) {
+    List<Case> claims = [
+      SELECT Id, CaseNumber
+      FROM Case
+      WHERE
+        ContactId = :contactId
+        AND IsClosed = FALSE
+        AND RecordType.DeveloperName = :VEHICLE_CLAIMS_RECORD_TYPE
+      WITH SYSTEM_MODE
+      ORDER BY CreatedDate DESC, CaseNumber DESC
+      LIMIT 1
+    ];
+    return claims.isEmpty() ? null : claims[0];
   }
 
   private static List<Vehicle__c> getActiveLoans(Id contactId) {
@@ -310,15 +327,5 @@ public without sharing class VehicleLoanController {
       LoggingLevel.ERROR,
       'Vehicle loan persistence failed (' + error.getTypeName() + ').'
     );
-  }
-
-  private class AuthorizedCase {
-    private Case caseRecord;
-    private Id contactId;
-
-    private AuthorizedCase(Case caseRecord, Id contactId) {
-      this.caseRecord = caseRecord;
-      this.contactId = contactId;
-    }
   }
 }

@@ -4,7 +4,7 @@
     <isExposed>true</isExposed>
     <masterLabel>My Vehicle Claims</masterLabel>
     <description
-  >Lists the signed-in customer's vehicle claims and their status, with details on click, on an Experience Cloud site.</description>
+  >Lists the signed-in customer's vehicle claims and their status, with details on click and a link to each claim's page, on an Experience Cloud site.</description>
     <targets>
         <target>lightningCommunity__Page</target>
         <target>lightningCommunity__Default</target>

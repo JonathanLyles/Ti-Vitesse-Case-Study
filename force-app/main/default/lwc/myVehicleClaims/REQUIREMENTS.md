@@ -16,6 +16,7 @@ they have submitted and their status. Customers submit claims with the
 | R6  | Customers can read vehicles linked to their Contact, including vehicles an agent added, not only the ones they submitted.                                                                                                                                   |
 | R7  | Guests (logged-out visitors) get nothing rendered, and Apex is never called.                                                                                                                                                                                |
 | R8  | When a customer submits a new claim with `createVehicleClaim`, the list reloads and the new claim appears at the top, without a page reload. For a customer who had no claims, the component appears (R5).                                                  |
+| R9  | An expanded claim has a **View claim** button that opens that claim's Case record page on the site (`standard__recordPage`, Case, `view`), where the vehicle loan component is placed. Added 2026-10-13 for Issue 8b.                                       |
 
 ### Defaults
 
@@ -172,10 +173,14 @@ Community licences. Run: `sf apex run test -n CustomerClaimsControllerTest -c -r
 | J23 | reloads only once per submitted claim after it has been reconnected                                           | R8            |
 | J24 | ignores a slow earlier load that finishes after a newer one                                                   | Counter       |
 | J25 | ignores a slow earlier load that fails after a newer one succeeded                                            | Counter       |
+| J26 | shows a View claim button only in the expanded claim                                                          | R9            |
+| J27 | opens the claim's Case record page when View claim is clicked                                                 | R9            |
 
 The accessibility matcher is registered in this test file only (`setup()` from
 `@sa11y/jest` in `beforeAll`). In Jest the `lightning-*` components are simple
 stubs, so J11 checks this component's own markup, not the real base components.
+J26 and J27 replace the standard `lightning/navigation` stub (whose `Navigate` does
+nothing) with a mock that records the page reference.
 
 J24 and J25 were checked by temporarily disabling the counter's check: both fail
 without it. The J18 to J25 tests rely on the real `c/claimEvents` module, so they
@@ -219,10 +224,11 @@ Run: `npm run test:unit`, `npm run lint`, `npm run prettier:verify`.
 | M10 | With the form and the list on one page, a customer with no claims submits a claim: the list appears, with the new claim, without a page reload   | R8, R5     |
 | M11 | A customer with claims submits another: it appears at the top, collapsed, and a claim that was expanded stays expanded                           | R8, D6     |
 | M12 | Submit a claim, navigate to another page and back: the new claim is still listed (this is the cache check, see "`getMyClaims` is not cacheable") | R8         |
+| M13 | Expanding a claim and selecting **View claim** opens that claim's Case record page, which shows the vehicle loan component                       | R9         |
 
 ## Placing it on the site
 
-Add **My Vehicle Claims** to a page in Experience Builder and publish.
+Add **My Vehicle Claims** to a standard page (for example **My Vehicle Claims**, with no URL parameters) in Experience Builder and publish. **View claim** (R9) needs the site to have a Case record page (Builder: New Page, Object Pages, Case), which is where the vehicle loan component goes.
 
 For the list to refresh the moment a claim is submitted (R8), put it on the **same
 page** as **Create Vehicle Claim**. On different pages it still shows the new claim

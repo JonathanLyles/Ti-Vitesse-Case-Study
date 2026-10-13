@@ -25,6 +25,20 @@ jest.mock(
   { virtual: true }
 );
 
+// The standard stub's Navigate does nothing; this one records the page reference
+const mockNavigate = jest.fn();
+jest.mock("lightning/navigation", () => {
+  const Navigate = Symbol("Navigate");
+  const NavigationMixin = (Base) =>
+    class extends Base {
+      [Navigate](pageReference) {
+        mockNavigate(pageReference);
+      }
+    };
+  NavigationMixin.Navigate = Navigate;
+  return { NavigationMixin };
+});
+
 const GENERIC_ERROR = "Your claims could not be loaded. Please try again.";
 
 // Promise-based Apex calls resolve on the microtask queue
@@ -112,6 +126,7 @@ describe("c-my-vehicle-claims", () => {
   beforeEach(() => {
     mockIsGuest = false;
     getMyClaims.mockReset();
+    mockNavigate.mockReset();
   });
 
   afterEach(() => {
@@ -209,6 +224,35 @@ describe("c-my-vehicle-claims", () => {
     expect(getDetailText(element, "[data-vehicle-field=engineCapacity]")).toBe(
       "1600"
     );
+  });
+
+  it("shows a View claim button only in the expanded claim", async () => {
+    const element = await createComponent();
+
+    expect(element.shadowRoot.querySelector("[data-view-claim]")).toBeNull();
+
+    await click(getRows(element)[1], element);
+    const buttons = element.shadowRoot.querySelectorAll("[data-view-claim]");
+
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].label).toBe("View claim");
+  });
+
+  it("opens the claim's Case record page when View claim is clicked", async () => {
+    const element = await createComponent();
+    await click(getRows(element)[1], element);
+
+    element.shadowRoot.querySelector("[data-view-claim]").click();
+
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith({
+      type: "standard__recordPage",
+      attributes: {
+        recordId: claims[1].Id,
+        objectApiName: "Case",
+        actionName: "view"
+      }
+    });
   });
 
   it("collapses a claim when it is clicked again", async () => {

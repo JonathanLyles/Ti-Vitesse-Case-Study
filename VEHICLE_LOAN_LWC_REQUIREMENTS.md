@@ -22,15 +22,28 @@ and year.
 
 FR-4. The component shall be available on the internal Case record page and on
 the Experience Cloud site **TI Vitesse Insurance Ltd** (URL prefix
-`/customers`). On the site it shall be placed on the **My Vehicle Claims** Case
-record page. On both pages it shall be shown only for `Vehicle_Claims` Cases.
+`/customers`). On the site it may be placed on the **My Vehicle Claims** list
+page and on the site's **Case record page** (Case Detail, opened from the list
+with **View claim**). On the site the component does not depend on the page's
+Case (FR-5), so it shows the same content on both pages. On the internal Case
+record page it shall be shown only for `Vehicle_Claims` Cases.
 
-FR-5. On the Experience Cloud site, the component shall be available only to
-an authenticated customer with an active (not closed) `Vehicle_Claims` Case.
-Any Case status qualifies unless the Case is closed. The customer may request
-a loan only if their Contact has no active vehicle loan. If the Contact
-already has an active loan, the component shall show that loan instead of
-allowing another vehicle request.
+FR-5. On the Experience Cloud site the component shall always act for the
+authenticated customer's own Contact, whatever page it is on; a Case Id from the
+page is not used. A customer is eligible to loan a vehicle when they have at
+least one open (not closed) `Vehicle_Claims` Case and their Contact has no
+active vehicle loan. Any status qualifies unless the Case is closed.
+
+- If the Contact has an active loan, the component shall show that loan with a
+  Return action instead of the vehicle list.
+- If the Contact has no open claim, the component shall show a plain message
+  that an open claim is needed, and no vehicles.
+- Otherwise it shall show the available vehicles and the number of the claim
+  the loan will be linked to.
+
+FR-5A. A reservation shall always be linked to the Contact's most recently
+submitted open `Vehicle_Claims` Case (latest `CreatedDate`), whichever page it
+was started from. This applies to customers and internal users alike.
 
 FR-6. The component shall respect the `Customer Community Clone` profile and
 the `Vehicle_Claim_Portal_Access` permission set when showing loan details.
@@ -43,8 +56,9 @@ FR-7. The component shall also be available on a Case record page to an
 internal agent who owns the Contact associated with that Case, and to an
 internal user granted the `Manage_All_Vehicle_Loans` custom permission (for
 example, administrators or supervisors), whether or not they own the Contact.
-Either user may view, reserve, and return a loan for that Contact, subject to
-the active Case and one-active-loan-per-Contact rules.
+Either user may view, reserve, and return a loan for the Contact of the Case
+being viewed, whether that Case is open or closed, subject to the open-claim
+(FR-5, FR-5A) and one-active-loan-per-Contact rules.
 
 ### Reservation
 
@@ -53,7 +67,8 @@ request a reservation for the claim.
 
 FR-9. After a successful reservation, the system shall create or update a
 `Vehicle__c` loan record using the `Loan_Vehicle` record type, related to the
-customer's Contact and Case, so it appears in the Contact's Vehicles related
+Contact and to the Contact's most recent open `Vehicle_Claims` Case (FR-5A), so
+it appears in the Contact's Vehicles related
 list. The record shall be marked as an active loan by setting
 `Loan_Active__c` to true. Registration number, make, model, and year shall be
 populated from the selected vehicle returned by the availability service.
@@ -88,9 +103,9 @@ its available details instead of the vehicle availability and reservation
 form.
 
 FR-15. The customer or authorized internal agent shall be able to return the
-loaned vehicle from the component on any open `Vehicle_Claims` Case of the same
-Contact, not only the Case the loan was reserved on. The loan record keeps its
-original Case. The server shall send another `POST` to the `updateVehicle`
+loaned vehicle wherever the component shows the loan, including after all the
+Contact's claims are closed. The loan record keeps the Case it was reserved
+on. The server shall send another `POST` to the `updateVehicle`
 endpoint using the loaned vehicle's registration number. Any HTTP `2xx`
 response shall count as a successful return.
 
@@ -114,10 +129,10 @@ true: the customer has at least one open `Vehicle_Claims` Case, and the
 customer's Contact has no active vehicle loan on any Case. This is the same
 one-active-loan-per-Contact rule the component and the internal page use. While
 a loan is active the tile shall not be shown; the customer sees and returns the
-loan on the My Vehicle Claims page of any of their open claims (FR-14, FR-15).
+loan on the Case record page of any of their open claims (FR-14, FR-15).
 
-FR-20. Selecting **Loan a vehicle** shall take the customer to the My Vehicle
-Claims page of their most recently submitted open `Vehicle_Claims` Case
+FR-20. Selecting **Loan a vehicle** shall take the customer to the Case record
+page of their most recently submitted open `Vehicle_Claims` Case
 (latest `CreatedDate`), where the component shows the available vehicles and
 the Reserve action. No claim choice is offered.
 
@@ -138,14 +153,16 @@ only ever shown to authenticated customers.
 NFR-1. Every server operation that retrieves claim or loan information,
 reserves a vehicle, or returns a vehicle shall independently verify the
 running user's identity and authorization using Salesforce records. For an
-Experience Cloud customer, the Case's `ContactId` must match the running
-user's `ContactId`. For an internal user, either the Case Contact's `OwnerId`
-must match the running user's Id, or the running user must hold the
-`Manage_All_Vehicle_Loans` custom permission. Experience Cloud users are never
-authorized by the custom permission. In every flow, the Case must not be closed,
-reservation must be rejected if the Contact already has an active loan, and a
-return must target an active loan related to that Contact (the loan may have
-been reserved on another of the Contact's Cases). The server
+Experience Cloud customer, the Contact is always the running user's
+`ContactId`; a Case Id sent by the browser is ignored. For an internal user,
+the Contact is that of the `Vehicle_Claims` Case being viewed (open or closed),
+and either that Contact's `OwnerId` must match the running user's Id, or the
+running user must hold the `Manage_All_Vehicle_Loans` custom permission.
+Experience Cloud users are never authorized by the custom permission. A
+reservation requires an open `Vehicle_Claims` Case for that Contact, is linked
+to the most recent one, and is rejected if the Contact already has an active
+loan. A return must target an active loan of that Contact; it does not need an
+open claim. The server
 shall not trust Case IDs, Contact IDs, registration numbers, loan-active
 flags, or other authorization claims supplied by the browser.
 
@@ -153,7 +170,7 @@ Hiding or disabling a component in the LWC is only a user-interface behavior;
 it is not an authorization check. A user can bypass the UI and invoke exposed
 server methods directly or alter request values. Therefore, each Apex method
 must derive and verify the running user's Contact, Contact-ownership
-relationship, or custom permission and repeat the Case-status and active-loan checks before
+relationship, or custom permission and repeat the open-claim and active-loan checks before
 returning protected data or making a callout.
 
 NFR-2. An Experience Cloud user or internal agent shall not be able to view,
@@ -175,22 +192,27 @@ as success.
 
 ### US-1: View available vehicles
 
-As an eligible customer, I want to view available vehicles for an active Case
-so that I can choose one to loan if my Contact does not already have an active
+As an eligible customer, I want to view available vehicles while I have an open
+claim so that I can choose one to loan if my Contact does not already have an active
 loan.
 
 **Acceptance criteria**
 
-- Given I am the authenticated customer associated with the Contact on an
-  active `Vehicle_Claims` Case, an internal agent who owns that Contact, or an
+- Given I am an authenticated customer with at least one open `Vehicle_Claims`
+  Case, an internal agent who owns the Contact of the Case I am viewing, or an
   internal user with the `Manage_All_Vehicle_Loans` custom permission, and the
-  Contact has no active vehicle loan, when I open the component, then
-  I can see the available vehicles returned by the service.
-- Given my Case is closed or I do not have an authorized Case, when I open the
-  site, then I cannot access that Case's vehicle-loan information or actions.
-- Given my Contact already has an active loan, when I open the component for
-  an active Case, then I see the existing loan instead of the
-  available-vehicle reservation form.
+  Contact has no active vehicle loan, when I open the component on any page,
+  then I see the available vehicles returned by the service and the number of
+  the claim the loan will be linked to.
+- Given I have no open claim and no active loan, when I open the component,
+  then I see a message that an open claim is needed, and no vehicles, and no
+  call is made to the vehicle service.
+- Given I am an internal user who neither owns the viewed Case's Contact nor
+  holds the custom permission, when I open the component, then I cannot access
+  that Contact's vehicle-loan information or actions.
+- Given my Contact already has an active loan, when I open the component on any
+  page, then I see the existing loan instead of the available-vehicle
+  reservation form.
 - Given the vehicle service returns a non-`2xx` response, when the list is
   requested, then the component shows an error rather than presenting the
   request as successful.
@@ -210,18 +232,19 @@ year so that I can find a suitable vehicle.
 ### US-3: Reserve a selected vehicle
 
 As an eligible customer or internal agent, I want to reserve a selected
-vehicle for an active Case so that the customer can use a loan vehicle.
+vehicle for the customer's most recent open claim so that the customer can use
+a loan vehicle.
 
 **Acceptance criteria**
 
-- Given I am the authenticated customer associated with the Contact on an
-  active Case, an internal agent who owns that Contact, or an internal user
-  with the `Manage_All_Vehicle_Loans` custom permission, the Contact has no
-  active loan, and I select an available vehicle and enter its mileage and
+- Given I am an authenticated customer with an open claim, an internal agent
+  who owns the Contact, or an internal user with the `Manage_All_Vehicle_Loans`
+  custom permission, the Contact has no active loan, and I select an available vehicle and enter its mileage and
   engine capacity, when the reservation endpoint returns any HTTP `2xx`
   status, then I see a success confirmation and the active `Loan_Vehicle`
   `Vehicle__c` record is visible in the Contact's Vehicles related list with
-  the entered values saved.
+  the entered values saved, linked to the Contact's most recent open claim even
+  if I started from another claim's page.
 - Given the reservation endpoint returns a non-`2xx` status or the callout
   fails, then I see a failure message and can retry.
 - Given I am neither the authenticated customer associated with the Case
@@ -231,7 +254,7 @@ vehicle for an active Case so that the customer can use a loan vehicle.
 - Given I submit a registration number, then the server sends it as the
   encoded path segment and does not treat caller-supplied claim access as
   authorization.
-- Given the Case is closed, I fail the applicable Contact authorization
+- Given the Contact has no open claim, I fail the applicable authorization
   check, or the Contact already has an active loan, when I attempt to reserve
   a vehicle, then the server rejects the request without making the
   reservation callout.
@@ -245,8 +268,7 @@ loan can be marked complete while its record remains available for history.
 
 **Acceptance criteria**
 
-- Given my Contact has an active loan associated with an active Case, when I
-  open the component as the customer associated with that Contact, its owning
+- Given my Contact has an active loan, when I open the component as the customer associated with that Contact, its owning
   agent, or an internal user with the `Manage_All_Vehicle_Loans` custom
   permission, then I can view the existing loan details and access a return
   action.
@@ -259,9 +281,9 @@ loan can be marked complete while its record remains available for history.
 - Given the return callout succeeds but updating the local `Vehicle__c` fails,
   then the system shall report remote return success separately from the
   local update failure and shall not claim the remote return failed.
-- Given my Contact's active loan was reserved on one open claim, when I open
-  the component on another of my open claims, then I see the loan with a
-  Return action, and returning it from there succeeds.
+- Given my Contact has an active loan, when I open the component on any page,
+  including another claim's page or after all my claims are closed, then I see
+  the loan with a Return action, and returning it from there succeeds.
 - Given the loan is not associated with my Contact, or I am neither
   that Contact's customer, its owning agent, nor an internal user with the
   `Manage_All_Vehicle_Loans` custom permission, when I attempt to view or
@@ -279,7 +301,7 @@ site.
   **My open claims** tile and no **Loan a vehicle** tile.
 - Given I have an open claim and my Contact has no active loan, when I open
   Home, then I see the **Loan a vehicle** tile. Selecting it takes me to that
-  claim's My Vehicle Claims page, where I see the available vehicles.
+  claim's Case record page, where I see the available vehicles.
 - Given my Contact has an active loan on any claim, when I open Home, then I do
   not see the **Loan a vehicle** tile. On the page of any of my open claims I
   see the loan with a Return action.
@@ -302,8 +324,9 @@ site.
   bearer tokens.
 - The reservation callout is `updateVehicle`, and any `2xx` status is success;
   the response body is ignored.
-- A Case qualifies for a loan request if it is not closed (`IsClosed = false`);
-  no additional Case status restriction applies.
+- A customer can request a loan when they have at least one open claim
+  (`IsClosed = false`); no additional Case status restriction applies. The
+  loan is linked to the most recent open claim (FR-5A).
 - The authenticated Experience Cloud customer's `User.ContactId` is expected
   to match the Case's `ContactId` for the customer-facing workflow.
 - An internal agent is authorized for a Case when the agent owns the Contact
@@ -338,8 +361,8 @@ site.
   not currently expose vehicle-list or reservation operations.
 - The loan operations are exposed by `VehicleLoanController`, not by the
   claim-creation controller. Its public methods independently authorize the
-  current customer, Contact-owning internal agent, or custom-permission holder
-  and the active Case.
+  current customer, Contact-owning internal agent, or custom-permission holder,
+  work out the Contact, and find its most recent open claim.
 - The API client does not send its own Authorization header. Salesforce
   Named Credential configuration supplies server-side authorization.
 

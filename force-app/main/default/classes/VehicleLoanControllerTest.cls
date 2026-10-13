@@ -146,8 +146,93 @@ private class VehicleLoanControllerTest {
     }
 
     Assert.areEqual(loan.Id, context.activeLoan.Id);
-    Assert.isTrue(context.canReturnActiveLoan);
     Assert.areEqual(0, context.availableVehicles.size());
+  }
+
+  @IsTest
+  static void customerCanReturnLoanFromAnotherOpenClaim() {
+    User customer = getCustomer();
+    Case reservedOnCase = getActiveCase();
+    Vehicle__c loan = createActiveLoan(reservedOnCase, customer.ContactId);
+    Case otherOpenCase = insertVehicleClaim(reservedOnCase, 'New');
+    Test.setMock(HttpCalloutMock.class, new LoanApiMock(200));
+
+    VehicleLoanContext context;
+    VehicleLoanActionResult result;
+    System.runAs(customer) {
+      Test.startTest();
+      context = VehicleLoanController.getLoanContext(otherOpenCase.Id);
+      result = VehicleLoanController.returnVehicle(otherOpenCase.Id, loan.Id);
+      Test.stopTest();
+    }
+
+    Assert.areEqual(loan.Id, context.activeLoan.Id);
+    Assert.isTrue(result.remoteSucceeded);
+    Assert.isTrue(result.recordSaved, result.message);
+    Vehicle__c returnedLoan = [
+      SELECT Case__c, Loan_Active__c, Loan_End_Date__c
+      FROM Vehicle__c
+      WHERE Id = :loan.Id
+    ];
+    Assert.isFalse(returnedLoan.Loan_Active__c);
+    Assert.areEqual(Date.today(), returnedLoan.Loan_End_Date__c);
+    Assert.areEqual(
+      reservedOnCase.Id,
+      returnedLoan.Case__c,
+      'The loan keeps the Case it was reserved on'
+    );
+  }
+
+  @IsTest
+  static void rejectsReturnOfAnotherContactsLoanBeforeCallout() {
+    User customer = getCustomer();
+    Case vehicleCase = getActiveCase();
+    Contact otherContact = new Contact(LastName = 'Other Loan Customer');
+    insert otherContact;
+    Vehicle__c otherLoan = createActiveLoan(vehicleCase, otherContact.Id);
+    Test.setMock(HttpCalloutMock.class, new UnexpectedCalloutMock());
+
+    String message;
+    System.runAs(customer) {
+      try {
+        VehicleLoanController.returnVehicle(vehicleCase.Id, otherLoan.Id);
+      } catch (AuraHandledException error) {
+        message = error.getMessage();
+      }
+    }
+
+    Assert.areEqual(
+      'You are not authorized to access this active vehicle claim.',
+      message
+    );
+    Assert.isTrue(
+      [SELECT Loan_Active__c FROM Vehicle__c WHERE Id = :otherLoan.Id]
+      .Loan_Active__c
+    );
+  }
+
+  @IsTest
+  static void customerCanReturnLoanAfterAllTheirClaimsAreClosed() {
+    User customer = getCustomer();
+    Case reservedOnCase = getActiveCase();
+    Vehicle__c loan = createActiveLoan(reservedOnCase, customer.ContactId);
+    closeCase(reservedOnCase);
+    Test.setMock(HttpCalloutMock.class, new LoanApiMock(200));
+
+    VehicleLoanContext context;
+    VehicleLoanActionResult result;
+    System.runAs(customer) {
+      Test.startTest();
+      context = VehicleLoanController.getLoanContext(null);
+      result = VehicleLoanController.returnVehicle(null, loan.Id);
+      Test.stopTest();
+    }
+
+    Assert.areEqual(loan.Id, context.activeLoan.Id);
+    Assert.isTrue(result.recordSaved, result.message);
+    Assert.isFalse(
+      [SELECT Loan_Active__c FROM Vehicle__c WHERE Id = :loan.Id].Loan_Active__c
+    );
   }
 
   @IsTest
@@ -262,27 +347,20 @@ private class VehicleLoanControllerTest {
   }
 
   @IsTest
-  static void rejectsCustomerForClosedCaseBeforeCallout() {
+  static void customerWithOnlyClosedClaimsSeesNoVehiclesAndNoCallout() {
     User customer = getCustomer();
-    Case activeCase = getActiveCase();
-    Case closedCase = activeCase.clone(false, true, false, false);
-    closedCase.Status = 'Closed';
-    insert closedCase;
+    Case vehicleCase = getActiveCase();
+    closeCase(vehicleCase);
     Test.setMock(HttpCalloutMock.class, new UnexpectedCalloutMock());
 
-    String message;
+    VehicleLoanContext context;
     System.runAs(customer) {
-      try {
-        VehicleLoanController.getLoanContext(closedCase.Id);
-      } catch (AuraHandledException error) {
-        message = error.getMessage();
-      }
+      context = VehicleLoanController.getLoanContext(vehicleCase.Id);
     }
 
-    Assert.areEqual(
-      'You are not authorized to access this active vehicle claim.',
-      message
-    );
+    Assert.isFalse(context.hasOpenClaim);
+    Assert.isNull(context.activeLoan);
+    Assert.areEqual(0, context.availableVehicles.size());
   }
 
   @IsTest
@@ -382,26 +460,24 @@ private class VehicleLoanControllerTest {
   }
 
   @IsTest
-  static void rejectsAdminWithManageAllForClosedCaseBeforeCallout() {
+  static void adminViewingAClosedClaimSeesTheContactsLatestOpenClaim() {
     Case activeCase = getActiveCase();
-    Case closedCase = activeCase.clone(false, true, false, false);
-    closedCase.Status = 'Closed';
-    insert closedCase;
-    Test.setMock(HttpCalloutMock.class, new UnexpectedCalloutMock());
+    Case closedCase = insertVehicleClaim(activeCase, 'Closed');
+    Test.setMock(HttpCalloutMock.class, new LoanApiMock(200));
 
-    String message;
+    VehicleLoanContext context;
     System.runAs(getAdminWithManageAll()) {
-      try {
-        VehicleLoanController.getLoanContext(closedCase.Id);
-      } catch (AuraHandledException error) {
-        message = error.getMessage();
-      }
+      Test.startTest();
+      context = VehicleLoanController.getLoanContext(closedCase.Id);
+      Test.stopTest();
     }
 
+    Assert.isTrue(context.hasOpenClaim);
     Assert.areEqual(
-      'You are not authorized to access this active vehicle claim.',
-      message
+      [SELECT CaseNumber FROM Case WHERE Id = :activeCase.Id].CaseNumber,
+      context.claimCaseNumber
     );
+    Assert.areEqual(1, context.availableVehicles.size());
   }
 
   @IsTest
@@ -679,12 +755,11 @@ private class VehicleLoanControllerTest {
   }
 
   @IsTest
-  static void rejectsRequestWithoutACaseId() {
-    User customer = getCustomer();
+  static void rejectsInternalUserWithoutACaseIdBeforeCallout() {
     Test.setMock(HttpCalloutMock.class, new UnexpectedCalloutMock());
 
     String message;
-    System.runAs(customer) {
+    System.runAs(getAgent()) {
       try {
         VehicleLoanController.getLoanContext(null);
       } catch (AuraHandledException error) {
@@ -695,6 +770,82 @@ private class VehicleLoanControllerTest {
     Assert.areEqual(
       'You are not authorized to access this active vehicle claim.',
       message
+    );
+  }
+
+  @IsTest
+  static void customerLoadsVehiclesOnAPageWithoutACase() {
+    User customer = getCustomer();
+    Case vehicleCase = getActiveCase();
+    Test.setMock(HttpCalloutMock.class, new LoanApiMock(200));
+
+    VehicleLoanContext context;
+    System.runAs(customer) {
+      Test.startTest();
+      context = VehicleLoanController.getLoanContext(null);
+      Test.stopTest();
+    }
+
+    Assert.isTrue(context.hasOpenClaim);
+    Assert.areEqual(
+      [SELECT CaseNumber FROM Case WHERE Id = :vehicleCase.Id].CaseNumber,
+      context.claimCaseNumber
+    );
+    Assert.areEqual(1, context.availableVehicles.size());
+  }
+
+  @IsTest
+  static void reservationIsLinkedToTheMostRecentOpenClaim() {
+    User customer = getCustomer();
+    Case olderCase = getActiveCase();
+    Case newerCase = insertVehicleClaim(olderCase, 'New');
+    Test.setCreatedDate(olderCase.Id, Datetime.now().addDays(-2));
+    Test.setCreatedDate(newerCase.Id, Datetime.now().addDays(-1));
+    Test.setMock(HttpCalloutMock.class, new LoanApiMock(204));
+
+    VehicleLoanActionResult result;
+    System.runAs(customer) {
+      Test.startTest();
+      // Started from the older claim's page: the loan still goes to the newest
+      result = VehicleLoanController.reserveVehicle(
+        olderCase.Id,
+        'REG 123',
+        42000,
+        1600
+      );
+      Test.stopTest();
+    }
+
+    Assert.isTrue(result.recordSaved, result.message);
+    Assert.areEqual(
+      newerCase.Id,
+      [SELECT Case__c FROM Vehicle__c WHERE Contact__c = :customer.ContactId]
+      .Case__c
+    );
+  }
+
+  @IsTest
+  static void rejectsReservationWithoutAnOpenClaimBeforeCallout() {
+    User customer = getCustomer();
+    closeCase(getActiveCase());
+    Test.setMock(HttpCalloutMock.class, new UnexpectedCalloutMock());
+
+    String message;
+    System.runAs(customer) {
+      try {
+        VehicleLoanController.reserveVehicle(null, 'REG 123', 42000, 1600);
+      } catch (AuraHandledException error) {
+        message = error.getMessage();
+      }
+    }
+
+    Assert.areEqual(
+      'You need an open vehicle claim to loan a vehicle.',
+      message
+    );
+    Assert.areEqual(
+      0,
+      [SELECT COUNT() FROM Vehicle__c WHERE Contact__c = :customer.ContactId]
     );
   }
 
@@ -786,6 +937,31 @@ private class VehicleLoanControllerTest {
       FROM User
       WHERE Username = :ADMIN_WITH_MANAGE_ALL_USERNAME
     ];
+  }
+
+  private static void closeCase(Case vehicleCase) {
+    update new Case(Id = vehicleCase.Id, Status = 'Closed');
+  }
+
+  // Another Vehicle Claims Case for the same Contact and Account as the given one
+  private static Case insertVehicleClaim(Case sameContactCase, String status) {
+    Case claim = new Case(
+      AccountId = [
+        SELECT AccountId
+        FROM Case
+        WHERE Id = :sameContactCase.Id
+      ]
+      .AccountId,
+      ContactId = sameContactCase.ContactId,
+      RecordTypeId = Schema.SObjectType.Case.getRecordTypeInfosByDeveloperName()
+        .get('Vehicle_Claims')
+        .getRecordTypeId(),
+      Status = status,
+      Origin = 'Web',
+      Subject = 'Second vehicle claim'
+    );
+    insert claim;
+    return claim;
   }
 
   private static Vehicle__c createActiveLoan(Case vehicleCase, Id contactId) {

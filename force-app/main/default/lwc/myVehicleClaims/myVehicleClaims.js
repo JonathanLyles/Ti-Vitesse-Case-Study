@@ -1,4 +1,5 @@
 import { LightningElement } from "lwc";
+import { NavigationMixin } from "lightning/navigation";
 import isGuest from "@salesforce/user/isGuest";
 import getMyClaims from "@salesforce/apex/CustomerClaimsController.getMyClaims";
 import { subscribeToClaimSubmitted } from "c/claimEvents";
@@ -9,9 +10,11 @@ const GENERIC_ERROR = "Your claims could not be loaded. Please try again.";
  * Lists the logged-in Experience Cloud customer's vehicle claims with their
  * status. A claim expands to show its details and damaged vehicles. Nothing is
  * rendered while loading, for guests, or when the customer has no claims. The list
- * reloads when createVehicleClaim reports a submitted claim.
+ * reloads when createVehicleClaim reports a submitted claim. An expanded claim has
+ * a "View claim" button that opens its Case record page (where the vehicle loan
+ * component is placed).
  */
-export default class MyVehicleClaims extends LightningElement {
+export default class MyVehicleClaims extends NavigationMixin(LightningElement) {
   claims = [];
   error;
   selectedClaimId;
@@ -99,5 +102,16 @@ export default class MyVehicleClaims extends LightningElement {
   handleToggle(event) {
     const { id } = event.currentTarget.dataset;
     this.selectedClaimId = this.selectedClaimId === id ? undefined : id;
+  }
+
+  handleViewClaim(event) {
+    this[NavigationMixin.Navigate]({
+      type: "standard__recordPage",
+      attributes: {
+        recordId: event.currentTarget.dataset.id,
+        objectApiName: "Case",
+        actionName: "view"
+      }
+    });
   }
 }

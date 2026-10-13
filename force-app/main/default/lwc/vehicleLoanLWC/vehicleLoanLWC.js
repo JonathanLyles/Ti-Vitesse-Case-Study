@@ -16,7 +16,8 @@ export default class VehicleLoanLWC extends LightningElement {
   loadError;
   availableVehicles = [];
   activeLoan;
-  canReturnActiveLoan = false;
+  hasOpenClaim = false;
+  claimCaseNumber;
   selectedVehicle;
 
   connectedCallback() {
@@ -27,8 +28,16 @@ export default class VehicleLoanLWC extends LightningElement {
     return !!this.activeLoan;
   }
 
-  get showVehicleList() {
+  get isReady() {
     return !this.isLoading && !this.loadError && !this.hasActiveLoan;
+  }
+
+  get showVehicleList() {
+    return this.isReady && this.hasOpenClaim;
+  }
+
+  get showNoOpenClaim() {
+    return this.isReady && !this.hasOpenClaim;
   }
 
   get noVehicles() {
@@ -43,10 +52,13 @@ export default class VehicleLoanLWC extends LightningElement {
     this.isLoading = true;
     this.loadError = undefined;
     try {
+      // recordId is empty on a page without a Case (My Vehicle Claims); the
+      // server then uses the customer's own Contact and most recent open claim.
       const context = await getLoanContext({ caseId: this.recordId });
       this.availableVehicles = context.availableVehicles || [];
       this.activeLoan = context.activeLoan;
-      this.canReturnActiveLoan = !!context.canReturnActiveLoan;
+      this.hasOpenClaim = !!context.hasOpenClaim;
+      this.claimCaseNumber = context.claimCaseNumber;
     } catch (error) {
       this.loadError = this.errorMessage(error);
     } finally {
