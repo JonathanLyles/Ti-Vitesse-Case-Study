@@ -4,7 +4,7 @@ Problems found while cleaning up the Ti-Vitesse case study, with the fix, accept
 
 ## Context
 
-The cleanup left `main` deployable but with known loose ends. **Status as of 2026-10-12:** Issues 1, 2B, 2C (replaced by accept-and-document), 3, 4 (same), 5, 6, 7 and 9 are done. Still open: Issue 8 (vehicle loan component, split into 8a and 8b). This plan lists each issue, what to do, how big it is, and the order to tackle them. Each remaining item gets its own branch from `main`.
+The cleanup left `main` deployable but with known loose ends. **Status as of 2026-10-13:** Issues 1, 2B, 2C (replaced by accept-and-document), 3, 4 (same), 5, 6, 7, 8a and 9 are done, and GitHub #5 (admin access) is fixed. Still open: Issue 8b (vehicle loan component on the customer site, plus the live test), then Issue 10 (customer Home tiles); Issue 11 (Case assignment Flow) can be done at any time. This plan lists each issue, what to do, how big it is, and the order to tackle them. Each remaining item gets its own branch from `main`.
 
 Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or more.
 
@@ -149,10 +149,13 @@ Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or mor
   - A return action calling `returnVehicle`.
   - Loading, empty and error states; messages come from the `AuraHandledException` text.
   - Jest tests. Target stays `lightning__RecordPage`.
-- **Proposed solution, 8b (customer site):** add `lightningCommunity__Page` and `lightningCommunity__Default` targets with `recordId` for the site's Case detail page, place the component in Experience Builder and publish (a manual UI step), then do the real customer login and the live reserve and return.
+- **Proposed solution, 8b (customer site):** the site is **TI Vitesse Insurance Ltd** (URL prefix `/customers`, Network `0DBg70000028L4XGAU`). It has two active pages: **Home** (claim submission) and **My Vehicle Claims** (a Case record page). Add `lightningCommunity__Page` and `lightningCommunity__Default` targets with `recordId`, place the component on **My Vehicle Claims** in Experience Builder, shown only for `Vehicle_Claims` cases as on the internal page, and publish (a manual UI step). Then do the real customer login and the live reserve and return. The Home tiles that lead customers to this page are Issue 10, done after 8b (decided 2026-10-13).
+- **Return from any claim (added 2026-10-13, a behaviour change in 8b):** a Contact's active loan can be returned from the component on any of that Contact's open `Vehicle_Claims` Cases, not only the Case it was reserved on. This applies on the internal page too, since it is the same component.
+  - `VehicleLoanController`: `canReturnActiveLoan` becomes true whenever an active loan exists for the authorized Contact. `returnVehicle` matches the loan by Contact, dropping its `Case__c = caseId` condition. The loan keeps its original `Case__c`.
+  - The Jest test "shows the active loan without a Return button when it belongs to another case" is **rewritten on purpose** to expect the Return button. The tests-not-weakened gate may flag the changed assertion, so note it in the review.
 - **Effort:** 8a L to M, 8b M.
 
-**STATUS: BUILT, awaiting review (2026-10-12), branch `feature/issue-8a-vehicle-loan-lwc`.** Design decided with you: a vehicle list with a Reserve button per row; the Reserve modal shows the callout details (registration, make, model, year) read-only and asks for mileage and engine capacity, because the availability API does not return those two values (option A); success, warning and error messages are toasts. 15 Jest tests; `check.sh` passes all four gates (109 Apex tests, 0 failures, org-wide coverage 85%, 53 Jest tests, 0 High findings). Deployed to the org. Placement decided and deployed: `vehicleLoanLWC` is removed from `Vehicle_Record_Page` (there `recordId` is a Vehicle, so it would only show an authorisation error) and shown on `Case_Record_Page` only when `Record.RecordType.DeveloperName` equals `Vehicle_Claims`. Agent view confirmed 2026-10-12 (Jack Sparrow sees the vehicle list). Getting there needed three org grants, found from debug logs: the permission set assignment, then `externalCredentialPrincipalAccesses` for `TiVitesseExternalCredential-IntegrationUser` and read on the `UserExternalCredential` object, both added to `Vehicle_Loan_Internal_Access` and `Vehicle_Claim_Portal_Access` (the portal set for 8b), and `externalCredentials/TiVitesseExternalCredential` is now tracked in source. The component also shows a plain message when the user lacks class access. Open (superseded): the agent-view check (criterion 3) needs you to look at a Case record page.
+**STATUS 8a: DONE (2026-10-13), on `main` as `be1f7c7` and `a128dc0`.** Criteria 1-6 passed. The final `check.sh` run on `main` (after #6 and #7) passed all four gates: 113 Apex tests, 0 failures, org-wide coverage 85%, 54 Jest tests (16 for `vehicleLoanLWC`), 0 High findings, no assertions removed. Criterion 3: agent view confirmed 2026-10-12 (Jack Sparrow), admin view confirmed 2026-10-13 after the #5 fix (PR #6). Build notes from 2026-10-12 follow. Design decided with you: a vehicle list with a Reserve button per row; the Reserve modal shows the callout details (registration, make, model, year) read-only and asks for mileage and engine capacity, because the availability API does not return those two values (option A); success, warning and error messages are toasts. 15 Jest tests; `check.sh` passes all four gates (109 Apex tests, 0 failures, org-wide coverage 85%, 53 Jest tests, 0 High findings). Deployed to the org. Placement decided and deployed: `vehicleLoanLWC` is removed from `Vehicle_Record_Page` (there `recordId` is a Vehicle, so it would only show an authorisation error) and shown on `Case_Record_Page` only when `Record.RecordType.DeveloperName` equals `Vehicle_Claims`. Agent view confirmed 2026-10-12 (Jack Sparrow sees the vehicle list). Getting there needed three org grants, found from debug logs: the permission set assignment, then `externalCredentialPrincipalAccesses` for `TiVitesseExternalCredential-IntegrationUser` and read on the `UserExternalCredential` object, both added to `Vehicle_Loan_Internal_Access` and `Vehicle_Claim_Portal_Access` (the portal set for 8b), and `externalCredentials/TiVitesseExternalCredential` is now tracked in source. The component also shows a plain message when the user lacks class access.
 
 **Acceptance criteria for Issue 8a. Done when, all of these hold:**
 
@@ -166,12 +169,48 @@ Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or mor
 **Acceptance criteria for Issue 8b. Done when, all of these hold:**
 
 1. `vehicleLoanLWC.js-meta.xml` exposes `lightning__RecordPage`, `lightningCommunity__Page` and `lightningCommunity__Default`, with `recordId` available to the site page; Jest still passes; deploys cleanly.
-2. The component is placed on the customer site's Case detail page and the site is published. The page name is recorded in this plan (the placement lives in the org, not in source). Retrieving the site bundle into source is optional and decided with you.
+2. The component is placed on the **My Vehicle Claims** Case record page of **TI Vitesse Insurance Ltd** (`/customers`), shown only for `Vehicle_Claims` cases, and the site is published. The placement lives in the org, not in source. Retrieving the site bundle into source is optional and decided with you.
 3. **Go-ahead and safeguard before the live POST.** You explicitly approve running reserve and return against the remote org. Before it runs, the chosen vehicle's registration and availability are recorded. If the return call fails, stop, report, and restore the vehicle by hand; do not retry blindly. After the test, the vehicle's state equals the recorded "before".
 4. **Real portal customer login** (the check dropped at Issue 1): the customer sees available vehicles from the live API, reserves one with valid mileage and engine capacity, sees the active loan, and returns it. The OAuth settings read works as the portal customer, which also proves whichever approach Issue 9 chose for that query.
 5. **Security:** a customer cannot load or act on another customer's Case (the controller's authorization rejects it; existing tests plus one manual attempt).
-6. **No secrets** appear in the diff or the plan.
-7. **Suite and scans:** full Apex suite 0 failures, coverage at or above 85%, no new High findings.
+6. **Per-Contact rule, return from any claim, closed claims:**
+   - While the customer has an active loan, every open claim of theirs shows that loan **with** a Return button and offers no Reserve. Returning from a claim other than the one it was reserved on succeeds.
+   - Apex tests cover: return from another open claim of the same Contact succeeds; return of another Contact's loan is rejected; return from a closed claim is rejected.
+   - A closed claim shows the plain "not authorized" message, not a blank or broken component.
+7. **No secrets** appear in the diff or the plan.
+8. **Suite and scans:** full Apex suite 0 failures, coverage at or above 85%, no new High findings.
+9. **Delivery:** own branch from `main`, reviewed before commit, merged and pushed after approval; plan updated.
+
+### 10. Customer Home tiles: My open claims and Loan a vehicle (added 2026-10-13, after 8b)
+
+- **Summary:** on the Home page of TI Vitesse Insurance Ltd, the customer can submit a claim (`createVehicleClaim`) but has no direct way to reach their claims or a loan vehicle. You want two tiles: **My open claims**, and **Loan a vehicle**, which appears only when the customer has an open claim and no active loan. Requirements: `VEHICLE_LOAN_LWC_REQUIREMENTS.md` FR-18 to FR-22 and US-5.
+- **Depends on 8b:** the Loan tile leads to a claim's **My Vehicle Claims** page, where `vehicleLoanLWC` (placed in 8b) shows the vehicles and Reserve. The customer sees and returns an active loan on any of their open claims' pages (8b's return-from-any-claim change).
+- **Rules decided with you:**
+  - Per-Contact loan rule, the same as the internal page: one active loan per Contact across all claims.
+  - The Loan tile is hidden while any loan is active.
+  - With several open claims, the tile goes to the **most recently submitted** one (latest `CreatedDate`), with no choice step.
+  - Guests have no access to the site, so there is no guest case to handle.
+- **Proposed solution (to be designed at the start of the issue):**
+  - A new LWC for Home with the two tiles.
+  - A read-only Apex method returns whether the customer has an open claim, the Id of the most recent one, and whether the Contact has an active loan, all worked out server-side from the running user.
+  - Navigation goes to the Case record page with `NavigationMixin`.
+  - It refreshes on `c/claimEvents` `subscribeToClaimSubmitted`, the same pattern as `myVehicleClaims`.
+  - The open decisions are listed in the requirements' Open Decisions.
+- **Reuse:** `CustomerClaimsController.getMyClaims()` (user-mode claims query, newest first); `VehicleLoanController.getActiveLoans(contactId)` (per-Contact active-loan query, private today); `c/claimEvents`; the request ordering in `myVehicleClaims.js`.
+- **Effort:** M.
+
+**Acceptance criteria for Issue 10. Done when, all of these hold:**
+
+1. **Requirements settled:** the Issue 10 open decisions in `VEHICLE_LOAN_LWC_REQUIREMENTS.md` are decided with you and recorded before building.
+2. **Tile visibility (Jest and Apex tests):**
+   - no open claim → no Loan tile;
+   - an open claim and no active loan → Loan tile shown;
+   - an active loan on any claim → no Loan tile.
+3. **Server-side eligibility:** the Apex method derives everything from the running user's Contact and accepts no Contact or Case Id from the browser. It has tests for: customer with no claims; open claim with no loan; active loan; closed claims only; another customer's data is never returned; internal user (no Contact).
+4. **Navigation:** the Loan tile opens the My Vehicle Claims page of the customer's most recently submitted open claim (Apex test with two open claims checks the newest is chosen). My open claims opens the agreed list. Jest asserts the navigation targets.
+5. **Refresh:** submitting a first claim on Home makes the Loan tile appear without a page reload (Jest, through `claimEvents`).
+6. **Live check on the site:** as a real customer, the tiles appear as described, the Loan tile leads to the claim page with the vehicle list, and after a reservation (done under 8b's safeguards, or none if you prefer) the Loan tile is gone.
+7. **No secrets; suite and scans:** full Apex suite 0 failures, coverage at or above 85%, no new High findings, ESLint and Prettier pass.
 8. **Delivery:** own branch from `main`, reviewed before commit, merged and pushed after approval; plan updated.
 
 ### 9. sf-verify Stop hook (was in `stash@{0}`, now restored)
@@ -201,6 +240,34 @@ Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or mor
 7. The run time of a full verification is measured and written in the plan, with a decision on whether to restrict when the hook runs.
 8. Own branch from `main`, reviewed before commit, merged and pushed after approval; plan updated. The `.claude/settings.local.json` change is committed only if you want it shared.
 
+### 11. Case assignment Flow updates the Case after save (analyzer `flow:SameRecordUpdate`, added 2026-10-13)
+
+- **Summary:** `Case_Assignment_Vehicle_Claims` is a record-triggered **after-save** Flow on Case create. For Vehicle Claims Cases, it sets `OwnerId` to `$Record.Contact.Account.OwnerId` with an Update Records element on the same record. That causes a second save of every new claim, so triggers, other flows and validation rules run twice. The analyzer reports it as Moderate.
+- **Proposed solution:** make it a **before-save** (fast field update) Flow that assigns `$Record.OwnerId` directly; there is no separate DML. First confirm that before-save can read `$Record.Contact.Account.OwnerId` on create in this org. If it can't, fall back to an after-save Get Records + assignment, or stop and decide with you.
+- **Effort:** S.
+
+**Acceptance criteria for Issue 11. Done when, all of these hold:**
+
+1. The flow is a before-save record-triggered Flow with no Update Records element on the triggering Case, and the `flow:SameRecordUpdate` finding is gone.
+2. **Same outcome:** an Apex test inserts a Vehicle Claims Case for a Contact whose Account is owned by a given user, and asserts the Case owner is that user. A non-Vehicle-Claims Case keeps its default owner. The test is written and run **before** the change, to prove the current behaviour, and again after.
+3. Claim submission through `createVehicleClaim` / `VehicleClaimController` still works: its existing tests pass, plus one manual claim on the site whose owner is checked.
+4. Full Apex suite 0 failures, coverage at or above 85%, no new High findings.
+5. Own branch from `main`, reviewed before commit, merged and pushed after approval; plan updated.
+
+## Accepted analyzer findings (reviewed 2026-10-13)
+
+The `check.sh` gate fails only on High (severity 2) or worse. The 2026-10-13 run on `main` found 0 High, 39 Moderate, 84 Low and 2 Info. Everything except the Flow finding (Issue 11) was reviewed and **accepted, no action**. Re-review only if a count rises or a new rule appears.
+
+| Rule (count)                                                                              | Where                                                                     | Why accepted                                                                                                       |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `ApexUnitTestClassShouldHaveAsserts` (2)                                                  | `VehicleClaimControllerTest`, `VehicleLoanApiResponseTest`                | False positive: the asserts are in helper methods (`assertMissingRecordTypeConfiguration`, `assertInvalidVehicle`) |
+| `CyclomaticComplexity`, `ExcessiveParameterList`, `NcssCount` (19)                        | Loan controller, API client, claim controller, test helpers               | Mostly guard clauses and test helpers; refactoring adds risk for no user benefit                                   |
+| `AvoidBooleanMethodParameters` (5), `PropertyNamingConventions` (4)                       | `VehicleLoanActionResult`, `VehicleLoanContext`, `VehicleLoanApiResponse` | Simple result flags; property names must match the remote API's JSON                                               |
+| ESLint `no-unexpected-wire-adapter-usages` (5), `no-inline-disable` (3)                   | Jest tests only                                                           | Standard LWC test idioms (wire mocks, the `setTimeout` flush helper)                                               |
+| `OperationWithLimitsInLoop` (1)                                                           | `VehicleClaimControllerTest`                                              | Test-only code                                                                                                     |
+| `ApexDoc` (55), `ApexUnitTestClassShouldHaveRunAs` (34), `AvoidDebugStatements` (4) — Low | Various                                                                   | Documentation and style; the debug statements are deliberate error logging                                         |
+| `NoTrailingWhitespace` (2) — Info                                                         | `AnnualAgentResetBatch`, `MonthlyAgentCommissionCalculationBatch`         | Trivial; fix when those files are next touched                                                                     |
+
 ## Recommended order
 
 1. ~~**Issue 2, Part B: `.gitignore` for the credentials record**~~ **DONE**, on `main` (`853f1e9`).
@@ -211,7 +278,10 @@ Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or mor
 6. ~~**Issue 6**~~ **DONE** (`f7e62d9`). `Vehicle__c` object, fields, layouts, rules and `Case_Record_Page` now in source.
 7. ~~**Issue 9**~~ **DONE** (branch `chore/issue-9-sf-verify-hook`). Metadata query in user mode, all four gates PASS, Stop hook wired locally.
 8. ~~**Issue 7**~~ **DONE** (branch `fix/issue-7-remove-local-get-vehicles`). Option A: local `getVehicles()` removed.
-9. **Issue 8a** (L to M), then **Issue 8b** (M). Internal component, then the customer site and the live test.
+9. ~~**Issue 8a**~~ **DONE** (`be1f7c7`, `a128dc0`). Internal component; agent and admin views confirmed.
+10. **Issue 8b** (M). The component on the customer site's My Vehicle Claims page, then the live test.
+11. **Issue 10** (M). Customer Home tiles, after 8b.
+12. **Issue 11** (S). Case assignment Flow to before-save. It is independent of 8b and 10, so it can be done at any time.
 
 Each remaining item gets its own branch from the current `main`, reviewed before commit, merged and pushed after approval.
 
@@ -229,7 +299,15 @@ Each remaining item gets its own branch from the current `main`, reviewed before
 - 2026-10-12: Issue 9 finished with `WITH USER_MODE` (no suppression). The hook's wiring stays in the gitignored `.claude/settings.local.json`.
 - 2026-10-12: Issue 7 option A: the local `getVehicles()` is removed. Availability comes from the remote API through `getLoanContext`. A loan-history panel can be added later if wanted.
 - 2026-10-13: GitHub #5. The requirements only let the customer or the Contact-owning agent use the loan component, so administrators were blocked on cases they did not own. The requirements now add a `Manage_All_Vehicle_Loans` custom permission (granted by the `Vehicle_Loan_Manage_All` permission set). Holders can view, reserve and return loans on any qualifying Case. Portal users never get this bypass.
-- **Pending:** none. Next is Issue 8a.
+- 2026-10-13: Issue 8a is closed; the final `check.sh` run on `main` passed (113 Apex tests, 85% coverage, 54 Jest tests, 0 High).
+- 2026-10-13: the customer site is TI Vitesse Insurance Ltd (`/customers`). 8b places the loan component on its My Vehicle Claims Case record page.
+- 2026-10-13: 8b is done before the Home tiles (new Issue 10), because the Loan tile leads to the page 8b sets up.
+- 2026-10-13: the customer site uses the same per-Contact loan rule as the internal page (one active loan per Contact across all claims). No backend rule change.
+- 2026-10-13: the Loan a vehicle tile goes to the My Vehicle Claims page of the customer's most recently submitted open claim (no choice step), and is hidden while a loan is active.
+- 2026-10-13: an active loan can be returned from the page of any of the Contact's open claims, not only the claim it was reserved on (customer and internal pages alike). This is a controller and test change, done in 8b.
+- 2026-10-13: guests have no access to the customer site, so no guest-specific requirements are needed.
+- 2026-10-13: analyzer review. The after-save Case assignment Flow becomes Issue 11; every other Moderate, Low and Info finding is accepted (see "Accepted analyzer findings").
+- **Pending:** none. Next is Issue 8b.
 
 ## Parked (not scheduled)
 
@@ -253,4 +331,6 @@ Each remaining item gets its own branch from the current `main`, reviewed before
 - **Issue 7:** the grep for `VehicleLoanController.getVehicles` finds nothing (if A); full suite 0 failures.
 - **Issue 8a:** `npm run test:unit` passes; the component appears on the internal Case record page.
 - **Issue 8b:** real customer login completes reserve and return, and the remote vehicle returns to its recorded "before" state.
+- **Issue 10:** Jest and Apex tests for tile visibility and eligibility pass; a real customer sees the tiles behave as described on Home.
+- **Issue 11:** the owner-assignment Apex test passes before and after the change; `flow:SameRecordUpdate` no longer reported.
 - **Every issue:** full `RunLocalTests` 0 failures, org-wide coverage at or above 85%, no new High findings, and a diff you reviewed before commit.
