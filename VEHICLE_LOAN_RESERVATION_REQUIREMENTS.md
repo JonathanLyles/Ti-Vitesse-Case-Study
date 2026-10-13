@@ -64,8 +64,9 @@ and end date values for that booking.
 FR-11. Cancellation shall follow the same authorization rules as booking: an
 agent may cancel only for a Contact they own (or any Contact, with the
 `Manage_All_Vehicle_Loans` custom permission), and an authenticated customer may
-cancel only for the Contact associated with their own user. The booking's Case
-and Contact must match.
+cancel only for the Contact associated with their own user. The booking's
+Contact must match; cancellation may be requested from any open Case of that
+Contact, not only the Case the booking was made on.
 
 ### Retries, recovery, and logging
 

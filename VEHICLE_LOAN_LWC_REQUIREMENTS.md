@@ -20,8 +20,10 @@ and year.
 
 ### Component placement and eligibility
 
-FR-4. The component shall be available on a Case record page and on the
-Experience Cloud site.
+FR-4. The component shall be available on the internal Case record page and on
+the Experience Cloud site **TI Vitesse Insurance Ltd** (URL prefix
+`/customers`). On the site it shall be placed on the **My Vehicle Claims** Case
+record page. On both pages it shall be shown only for `Vehicle_Claims` Cases.
 
 FR-5. On the Experience Cloud site, the component shall be available only to
 an authenticated customer with an active (not closed) `Vehicle_Claims` Case.
@@ -86,7 +88,9 @@ its available details instead of the vehicle availability and reservation
 form.
 
 FR-15. The customer or authorized internal agent shall be able to return the
-loaned vehicle. The server shall send another `POST` to the `updateVehicle`
+loaned vehicle from the component on any open `Vehicle_Claims` Case of the same
+Contact, not only the Case the loan was reserved on. The loan record keeps its
+original Case. The server shall send another `POST` to the `updateVehicle`
 endpoint using the loaned vehicle's registration number. Any HTTP `2xx`
 response shall count as a successful return.
 
@@ -99,6 +103,36 @@ FR-17. If the return call fails, `Loan_Active__c` shall remain true and
 `Loan_End_Date__c` shall remain unchanged. The component shall show a failure
 message that allows the user to retry.
 
+### Customer site Home tiles
+
+FR-18. The Home page of the customer site shall show a **My open claims** tile
+to an authenticated customer. Selecting it shall show the customer's open (not
+closed) `Vehicle_Claims` Cases (see Open Decisions for where the list appears).
+
+FR-19. The Home page shall show a **Loan a vehicle** tile only when both are
+true: the customer has at least one open `Vehicle_Claims` Case, and the
+customer's Contact has no active vehicle loan on any Case. This is the same
+one-active-loan-per-Contact rule the component and the internal page use. While
+a loan is active the tile shall not be shown; the customer sees and returns the
+loan on the My Vehicle Claims page of any of their open claims (FR-14, FR-15).
+
+FR-20. Selecting **Loan a vehicle** shall take the customer to the My Vehicle
+Claims page of their most recently submitted open `Vehicle_Claims` Case
+(latest `CreatedDate`), where the component shows the available vehicles and
+the Reserve action. No claim choice is offered.
+
+FR-21. Tile visibility shall be decided on the server from the running user's
+Contact. The browser shall not supply Contact or Case identifiers for this
+decision. Tile visibility is only a convenience: every loan operation still
+performs the full authorization and eligibility checks in NFR-1.
+
+FR-22. When the customer submits a claim on the Home page, the tiles shall
+refresh without a page reload, so a customer's first open claim makes the
+**Loan a vehicle** tile appear.
+
+Guests (unauthenticated visitors) have no access to the site, so the tiles are
+only ever shown to authenticated customers.
+
 ## Non-Functional Requirements
 
 NFR-1. Every server operation that retrieves claim or loan information,
@@ -110,7 +144,8 @@ must match the running user's Id, or the running user must hold the
 `Manage_All_Vehicle_Loans` custom permission. Experience Cloud users are never
 authorized by the custom permission. In every flow, the Case must not be closed,
 reservation must be rejected if the Contact already has an active loan, and a
-return must target an active loan related to that Contact and Case. The server
+return must target an active loan related to that Contact (the loan may have
+been reserved on another of the Contact's Cases). The server
 shall not trust Case IDs, Contact IDs, registration numbers, loan-active
 flags, or other authorization claims supplied by the browser.
 
@@ -224,10 +259,36 @@ loan can be marked complete while its record remains available for history.
 - Given the return callout succeeds but updating the local `Vehicle__c` fails,
   then the system shall report remote return success separately from the
   local update failure and shall not claim the remote return failed.
-- Given the loan is not associated with my Contact and Case, or I am neither
+- Given my Contact's active loan was reserved on one open claim, when I open
+  the component on another of my open claims, then I see the loan with a
+  Return action, and returning it from there succeeds.
+- Given the loan is not associated with my Contact, or I am neither
   that Contact's customer, its owning agent, nor an internal user with the
   `Manage_All_Vehicle_Loans` custom permission, when I attempt to view or
   return it, then the server rejects the request.
+
+### US-5: Reach my claims and a loan vehicle from the Home page
+
+As an authenticated customer on the site's Home page, I want tiles for my open
+claims and for loaning a vehicle so that I can reach them without searching the
+site.
+
+**Acceptance criteria**
+
+- Given I have no open `Vehicle_Claims` Case, when I open Home, then I see the
+  **My open claims** tile and no **Loan a vehicle** tile.
+- Given I have an open claim and my Contact has no active loan, when I open
+  Home, then I see the **Loan a vehicle** tile. Selecting it takes me to that
+  claim's My Vehicle Claims page, where I see the available vehicles.
+- Given my Contact has an active loan on any claim, when I open Home, then I do
+  not see the **Loan a vehicle** tile. On the page of any of my open claims I
+  see the loan with a Return action.
+- Given I have more than one open claim and no active loan, when I select
+  **Loan a vehicle**, then I am taken to my most recently submitted open
+  claim's page.
+- Given I had no open claim, when I submit a claim on Home, then the
+  **Loan a vehicle** tile appears without reloading the page.
+- Given I select **My open claims**, then I see only my own open claims.
 
 ## Assumptions
 
@@ -311,3 +372,10 @@ loan can be marked complete while its record remains available for history.
   The controller reports remote success separately and blocks another action
   in the current component session, but no durable recovery workflow is
   specified.
+- Home tiles (FR-18 to FR-22), to settle when that work starts:
+  - Where **My open claims** shows the list: a list on Home itself, a separate
+    list page, or the existing `myVehicleClaims` list limited to open claims.
+  - Whether the two tiles are one new component or two.
+  - Which controller supplies tile eligibility: a new read-only method beside
+    `CustomerClaimsController.getMyClaims()`, or one in
+    `VehicleLoanController` that reuses its per-Contact active-loan query.
