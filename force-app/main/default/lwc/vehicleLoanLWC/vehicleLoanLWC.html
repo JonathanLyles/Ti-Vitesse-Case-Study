@@ -25,23 +25,24 @@
             ({activeLoan.Year_of_Vehicle__c})
           </dd>
         </dl>
-        <template lwc:if={canReturnActiveLoan}>
-          <lightning-button
-            class="return-button slds-var-m-top_small"
-            variant="brand"
-            label="Return vehicle"
-            onclick={handleReturn}
-          ></lightning-button>
-        </template>
-        <template lwc:else>
-          <p class="other-case slds-var-m-top_small slds-text-color_weak">
-            This loan belongs to another case, so it can only be returned from
-            that case.
-          </p>
-        </template>
+        <lightning-button
+          class="return-button slds-var-m-top_small"
+          variant="brand"
+          label="Return vehicle"
+          onclick={handleReturn}
+        ></lightning-button>
+      </template>
+
+      <template lwc:if={showNoOpenClaim}>
+        <p class="no-open-claim">
+          You need an open vehicle claim to loan a vehicle.
+        </p>
       </template>
 
       <template lwc:if={showVehicleList}>
+        <p class="linked-claim slds-var-m-bottom_small slds-text-color_weak">
+          Your loan will be linked to claim {claimCaseNumber}.
+        </p>
         <template lwc:if={noVehicles}>
           <p class="no-vehicles">No vehicles are available to loan.</p>
         </template>

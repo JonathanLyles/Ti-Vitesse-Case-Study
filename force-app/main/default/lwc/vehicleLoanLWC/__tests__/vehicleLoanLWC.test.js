@@ -39,6 +39,9 @@ const VEHICLES = [
   }
 ];
 
+// The customer has an open claim, so vehicles can be reserved against it
+const OPEN_CLAIM = { hasOpenClaim: true, claimCaseNumber: "00001036" };
+
 const ACTIVE_LOAN = {
   Id: LOAN_ID,
   Registration_number__c: "AB12CDE",
@@ -115,7 +118,10 @@ describe("c-vehicle-loan-lwc", () => {
   });
 
   it("lists each available vehicle with its own Reserve button", async () => {
-    getLoanContext.mockResolvedValue({ availableVehicles: VEHICLES });
+    getLoanContext.mockResolvedValue({
+      ...OPEN_CLAIM,
+      availableVehicles: VEHICLES
+    });
 
     const element = await createComponent();
 
@@ -131,7 +137,7 @@ describe("c-vehicle-loan-lwc", () => {
   });
 
   it("says so when no vehicles are available", async () => {
-    getLoanContext.mockResolvedValue({ availableVehicles: [] });
+    getLoanContext.mockResolvedValue({ ...OPEN_CLAIM, availableVehicles: [] });
 
     const element = await createComponent();
 
@@ -143,7 +149,10 @@ describe("c-vehicle-loan-lwc", () => {
     getLoanContext.mockRejectedValueOnce({
       body: { message: "Available vehicles could not be loaded." }
     });
-    getLoanContext.mockResolvedValueOnce({ availableVehicles: VEHICLES });
+    getLoanContext.mockResolvedValueOnce({
+      ...OPEN_CLAIM,
+      availableVehicles: VEHICLES
+    });
 
     const element = await createComponent();
 
@@ -160,10 +169,48 @@ describe("c-vehicle-loan-lwc", () => {
     expect(element.shadowRoot.querySelectorAll(".vehicle-row")).toHaveLength(2);
   });
 
-  it("shows the active loan with a Return button when it belongs to this case", async () => {
+  it("says which claim the loan will be linked to", async () => {
+    getLoanContext.mockResolvedValue({
+      ...OPEN_CLAIM,
+      availableVehicles: VEHICLES
+    });
+
+    const element = await createComponent();
+
+    expect(
+      element.shadowRoot.querySelector(".linked-claim").textContent
+    ).toContain("00001036");
+  });
+
+  it("explains that an open claim is needed, and lists no vehicles, without one", async () => {
+    getLoanContext.mockResolvedValue({
+      hasOpenClaim: false,
+      availableVehicles: []
+    });
+
+    const element = await createComponent();
+
+    expect(element.shadowRoot.querySelector(".no-open-claim")).not.toBeNull();
+    expect(element.shadowRoot.querySelector(".vehicle-row")).toBeNull();
+    expect(element.shadowRoot.querySelector(".no-vehicles")).toBeNull();
+  });
+
+  it("loads on a page without a Case, leaving the claim to the server", async () => {
+    getLoanContext.mockResolvedValue({
+      ...OPEN_CLAIM,
+      availableVehicles: VEHICLES
+    });
+    const element = createElement("c-vehicle-loan-lwc", { is: VehicleLoanLWC });
+    document.body.appendChild(element);
+    await flushPromises();
+
+    expect(getLoanContext).toHaveBeenCalledWith({ caseId: undefined });
+    expect(element.shadowRoot.querySelectorAll(".vehicle-row")).toHaveLength(2);
+  });
+
+  it("shows the active loan with a Return button instead of the vehicle list", async () => {
     getLoanContext.mockResolvedValue({
       activeLoan: ACTIVE_LOAN,
-      canReturnActiveLoan: true,
       availableVehicles: []
     });
 
@@ -173,28 +220,35 @@ describe("c-vehicle-loan-lwc", () => {
       element.shadowRoot.querySelector(".loan-registration").textContent
     ).toBe("AB12CDE");
     expect(element.shadowRoot.querySelector(".return-button")).not.toBeNull();
-    expect(element.shadowRoot.querySelector(".other-case")).toBeNull();
     expect(element.shadowRoot.querySelector(".vehicle-row")).toBeNull();
   });
 
-  it("shows the active loan without a Return button when it belongs to another case", async () => {
+  it("lets a loan reserved on another case be returned from this case", async () => {
     getLoanContext.mockResolvedValue({
-      activeLoan: ACTIVE_LOAN,
-      canReturnActiveLoan: false,
+      activeLoan: { ...ACTIVE_LOAN, Case__c: "500000000000002AAA" },
       availableVehicles: []
     });
-
+    returnVehicle.mockResolvedValue({
+      remoteSucceeded: true,
+      recordSaved: true,
+      message: "The vehicle has been returned."
+    });
     const element = await createComponent();
 
-    expect(
-      element.shadowRoot.querySelector(".loan-registration").textContent
-    ).toBe("AB12CDE");
-    expect(element.shadowRoot.querySelector(".return-button")).toBeNull();
-    expect(element.shadowRoot.querySelector(".other-case")).not.toBeNull();
+    element.shadowRoot.querySelector(".return-button").click();
+    await flushPromises();
+
+    expect(returnVehicle).toHaveBeenCalledWith({
+      caseId: CASE_ID,
+      loanVehicleId: LOAN_ID
+    });
   });
 
   it("opens the reserve form with the callout details and closes it on Cancel", async () => {
-    getLoanContext.mockResolvedValue({ availableVehicles: VEHICLES });
+    getLoanContext.mockResolvedValue({
+      ...OPEN_CLAIM,
+      availableVehicles: VEHICLES
+    });
     const element = await createComponent();
 
     await openReserveModal(element, "XY34ZZZ");
@@ -215,10 +269,9 @@ describe("c-vehicle-loan-lwc", () => {
 
   it("reserves the chosen vehicle with the typed mileage and engine capacity, toasts success and reloads", async () => {
     getLoanContext
-      .mockResolvedValueOnce({ availableVehicles: VEHICLES })
+      .mockResolvedValueOnce({ ...OPEN_CLAIM, availableVehicles: VEHICLES })
       .mockResolvedValueOnce({
         activeLoan: ACTIVE_LOAN,
-        canReturnActiveLoan: true,
         availableVehicles: []
       });
     reserveVehicle.mockResolvedValue({
@@ -250,7 +303,10 @@ describe("c-vehicle-loan-lwc", () => {
   });
 
   it("does not call Apex while the reserve form is invalid", async () => {
-    getLoanContext.mockResolvedValue({ availableVehicles: VEHICLES });
+    getLoanContext.mockResolvedValue({
+      ...OPEN_CLAIM,
+      availableVehicles: VEHICLES
+    });
     const element = await createComponent();
     await openReserveModal(element, "AB12CDE");
     const [mileageInput] =
@@ -267,7 +323,10 @@ describe("c-vehicle-loan-lwc", () => {
   });
 
   it("toasts the controller message as an error when the reservation fails and keeps the form open", async () => {
-    getLoanContext.mockResolvedValue({ availableVehicles: VEHICLES });
+    getLoanContext.mockResolvedValue({
+      ...OPEN_CLAIM,
+      availableVehicles: VEHICLES
+    });
     reserveVehicle.mockRejectedValue({
       body: { message: "That vehicle is no longer available." }
     });
@@ -288,7 +347,10 @@ describe("c-vehicle-loan-lwc", () => {
   });
 
   it("warns when the remote reservation worked but Salesforce could not save the record", async () => {
-    getLoanContext.mockResolvedValue({ availableVehicles: VEHICLES });
+    getLoanContext.mockResolvedValue({
+      ...OPEN_CLAIM,
+      availableVehicles: VEHICLES
+    });
     reserveVehicle.mockResolvedValue({
       remoteSucceeded: true,
       recordSaved: false,
@@ -313,10 +375,9 @@ describe("c-vehicle-loan-lwc", () => {
     getLoanContext
       .mockResolvedValueOnce({
         activeLoan: ACTIVE_LOAN,
-        canReturnActiveLoan: true,
         availableVehicles: []
       })
-      .mockResolvedValueOnce({ availableVehicles: VEHICLES });
+      .mockResolvedValueOnce({ ...OPEN_CLAIM, availableVehicles: VEHICLES });
     returnVehicle.mockResolvedValue({
       remoteSucceeded: true,
       recordSaved: true,
@@ -345,7 +406,6 @@ describe("c-vehicle-loan-lwc", () => {
   it("toasts the controller message as an error when the return fails", async () => {
     getLoanContext.mockResolvedValue({
       activeLoan: ACTIVE_LOAN,
-      canReturnActiveLoan: true,
       availableVehicles: []
     });
     returnVehicle.mockRejectedValue({
