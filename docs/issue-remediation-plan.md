@@ -3,7 +3,7 @@
 Problems found while cleaning up the Ti-Vitesse case study, with the fix, acceptance criteria, effort and status for each. This file in the repo is the master copy.
 
 ## Context
-The cleanup left `main` deployable but with known loose ends. **Status as of 2026-10-12:** Issues 1, 2B, 2C (replaced by accept-and-document), 3, 4 (same), 5, 6 and 9 are done. Still open: Issues 7 and 8 (vehicle loan component). This plan lists each issue, what to do, how big it is, and the order to tackle them. Each remaining item gets its own branch from `main`.
+The cleanup left `main` deployable but with known loose ends. **Status as of 2026-10-12:** Issues 1, 2B, 2C (replaced by accept-and-document), 3, 4 (same), 5, 6, 7 and 9 are done. Still open: Issue 8 (vehicle loan component, split into 8a and 8b). This plan lists each issue, what to do, how big it is, and the order to tackle them. Each remaining item gets its own branch from `main`.
 
 Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or more.
 
@@ -114,6 +114,8 @@ Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or mor
 - **Proposed solution (recommended): A.** The remote API is the source of truth for availability, the controller already has the authorised, tested path, and a second unscoped query invites a wrong "available" list. Add B later only if you want a history panel.
 - **Effort:** S to decide, S to change.
 
+**STATUS: DONE (2026-10-12), option A chosen, branch `fix/issue-7-remove-local-get-vehicles`.** `VehicleLoanController.getVehicles()` is removed, together with the `getVehicles` import, the `@wire(getVehicles)` and the vehicle list in `vehicleLoanLWC` (the placeholder now shows only the record Id and case number until Issue 8a). `grep` finds no remaining reference; the `VehicleLoanApiClient.getVehicles()` remote call is untouched. `check.sh` passes all four gates: 109 tests, 0 failures, org-wide coverage 85%, `VehicleLoanController` 89% -> 91%, 0 High findings.
+
 **Acceptance criteria for Issue 7. Done when, all of these hold:**
 1. **Decision recorded:** you pick A, B or C and the choice and reason are written in this plan.
 2. **If A:** `getVehicles()` is removed from `VehicleLoanController`; the `getVehicles` import and `@wire(getVehicles)` are removed from `vehicleLoanLWC`; no other reference remains (`grep -r "VehicleLoanController.getVehicles" force-app` returns nothing, and the `VehicleLoanApiClient.getVehicles()` remote call is untouched).
@@ -184,7 +186,7 @@ Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or mor
 5. ~~**Issue 3**~~ **DONE** (`a8fb0ad`, pushed). High findings now 1.
 6. ~~**Issue 6**~~ **DONE** (`f7e62d9`). `Vehicle__c` object, fields, layouts, rules and `Case_Record_Page` now in source.
 7. ~~**Issue 9**~~ **DONE** (branch `chore/issue-9-sf-verify-hook`). Metadata query in user mode, all four gates PASS, Stop hook wired locally.
-8. **Issue 7** (S, **NEXT**). Decide and remove or rescope the local `getVehicles()`.
+8. ~~**Issue 7**~~ **DONE** (branch `fix/issue-7-remove-local-get-vehicles`). Option A: local `getVehicles()` removed.
 9. **Issue 8a** (L to M), then **Issue 8b** (M). Internal component, then the customer site and the live test.
 
 Each remaining item gets its own branch from the current `main`, reviewed before commit, merged and pushed after approval.
@@ -200,7 +202,8 @@ Each remaining item gets its own branch from the current `main`, reviewed before
 - 2026-10-12: this plan lives in the repo as `docs/issue-remediation-plan.md`, the master copy.
 - 2026-10-12: Issue 6 retrieves the whole `Vehicle__c` object and `Case_Record_Page`; the Experience Cloud template classes are ignored.
 - 2026-10-12: Issue 9 finished with `WITH USER_MODE` (no suppression). The hook's wiring stays in the gitignored `.claude/settings.local.json`.
-- **Pending:** Issue 7 option (A, B or C; A recommended).
+- 2026-10-12: Issue 7 option A: the local `getVehicles()` is removed. Availability comes from the remote API through `getLoanContext`. A loan-history panel can be added later if wanted.
+- **Pending:** none. Next is Issue 8a.
 
 ## Parked (not scheduled)
 - The `Test.isRunningTest()` branch in `VehicleLoanApiClient.getOAuthSettings()` (line 182) lets tests inject settings. It pre-dates this work. Replacing it with injection is a possible cleanup.

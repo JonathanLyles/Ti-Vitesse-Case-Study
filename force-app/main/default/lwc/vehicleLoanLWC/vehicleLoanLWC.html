@@ -3,13 +3,6 @@
     <div class="slds-var-p-around_medium">
       Record Id: {recordId} <br />
       Case Number: {caseNumber}<br />
-      <template lwc:if={vehicles.data}>
-        <ul>
-          <template for:each={vehicles.data} for:item="vehicle">
-            <li key={vehicle.Id}>{vehicle.Make__c} {vehicle.Model__c}</li>
-          </template>
-        </ul>
-      </template>
     </div>
   </lightning-card>
 </template>
