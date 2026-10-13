@@ -4,8 +4,8 @@ private class VehicleLoanControllerTest {
     'vehicle.loan.agent@' +
     UserInfo.getOrganizationId() +
     '.test';
-  private static final String ADMIN_USERNAME =
-    'vehicle.loan.admin@' +
+  private static final String ADMIN_WITHOUT_MANAGE_ALL_USERNAME =
+    'vehicle.loan.admin.nomanageall@' +
     UserInfo.getOrganizationId() +
     '.test';
   private static final String ADMIN_WITH_MANAGE_ALL_USERNAME =
@@ -32,15 +32,15 @@ private class VehicleLoanControllerTest {
       ]
       .Id;
       agent.UserPermissionsInteractionUser = true;
-      User administrator = buildUser(
+      User adminWithoutManageAll = buildUser(
         [SELECT Id FROM Profile WHERE Name = 'System Administrator'].Id,
-        ADMIN_USERNAME
+        ADMIN_WITHOUT_MANAGE_ALL_USERNAME
       );
       User adminWithManageAll = buildUser(
         [SELECT Id FROM Profile WHERE Name = 'System Administrator'].Id,
         ADMIN_WITH_MANAGE_ALL_USERNAME
       );
-      insert new List<User>{ agent, administrator, adminWithManageAll };
+      insert new List<User>{ agent, adminWithoutManageAll, adminWithManageAll };
       Id internalAccessId = [
         SELECT Id
         FROM PermissionSet
@@ -287,16 +287,16 @@ private class VehicleLoanControllerTest {
 
   @IsTest
   static void rejectsUserWithoutContactOwnershipOrManageAllPermissionBeforeCallout() {
-    User administrator = [
+    User adminWithoutManageAll = [
       SELECT Id
       FROM User
-      WHERE Username = :ADMIN_USERNAME
+      WHERE Username = :ADMIN_WITHOUT_MANAGE_ALL_USERNAME
     ];
     Case vehicleCase = getActiveCase();
     Test.setMock(HttpCalloutMock.class, new UnexpectedCalloutMock());
 
     String message;
-    System.runAs(administrator) {
+    System.runAs(adminWithoutManageAll) {
       try {
         VehicleLoanController.getLoanContext(vehicleCase.Id);
       } catch (AuraHandledException error) {
@@ -311,7 +311,7 @@ private class VehicleLoanControllerTest {
   }
 
   @IsTest
-  static void loadsAvailableVehiclesForManageAllUserWhoDoesNotOwnContact() {
+  static void loadsAvailableVehiclesForAdminWithManageAllWhoDoesNotOwnContact() {
     Case vehicleCase = getActiveCase();
     Test.setMock(HttpCalloutMock.class, new LoanApiMock(200));
 
@@ -328,7 +328,7 @@ private class VehicleLoanControllerTest {
   }
 
   @IsTest
-  static void manageAllUserCanReserveForContactTheyDoNotOwn() {
+  static void adminWithManageAllCanReserveForContactTheyDoNotOwn() {
     Case vehicleCase = getActiveCase();
     LoanApiMock mock = new LoanApiMock(204);
     Test.setMock(HttpCalloutMock.class, mock);
@@ -358,7 +358,7 @@ private class VehicleLoanControllerTest {
   }
 
   @IsTest
-  static void manageAllUserCanReturnLoanForContactTheyDoNotOwn() {
+  static void adminWithManageAllCanReturnLoanForContactTheyDoNotOwn() {
     Case vehicleCase = getActiveCase();
     Vehicle__c loan = createActiveLoan(vehicleCase, vehicleCase.ContactId);
     Test.setMock(HttpCalloutMock.class, new LoanApiMock(200));
@@ -382,7 +382,7 @@ private class VehicleLoanControllerTest {
   }
 
   @IsTest
-  static void rejectsManageAllUserForClosedCaseBeforeCallout() {
+  static void rejectsAdminWithManageAllForClosedCaseBeforeCallout() {
     Case activeCase = getActiveCase();
     Case closedCase = activeCase.clone(false, true, false, false);
     closedCase.Status = 'Closed';
