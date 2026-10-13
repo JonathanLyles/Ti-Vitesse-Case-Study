@@ -4,7 +4,7 @@ Problems found while cleaning up the Ti-Vitesse case study, with the fix, accept
 
 ## Context
 
-The cleanup left `main` deployable but with known loose ends. **Status as of 2026-10-13:** Issues 1, 2B, 2C (replaced by accept-and-document), 3, 4 (same), 5, 6, 7, 8a and 9 are done, and GitHub #5 (admin access) is fixed. Still open: Issue 8b (vehicle loan component on the customer site, plus the live test), then Issue 10 (customer Home tiles); Issue 11 (Case assignment Flow) can be done at any time. This plan lists each issue, what to do, how big it is, and the order to tackle them. Each remaining item gets its own branch from `main`.
+The cleanup left `main` deployable but with known loose ends. **Status as of 2026-10-13:** Issues 1, 2B, 2C (replaced by accept-and-document), 3, 4 (same), 5, 6, 7, 8a, 8b and 9 are done, and GitHub #5 (admin access) is fixed. Still open: Issue 10 (customer Home tiles); Issue 11 (Case assignment Flow) can be done at any time. This plan lists each issue, what to do, how big it is, and the order to tackle them. Each remaining item gets its own branch from `main`.
 
 Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or more.
 
@@ -167,6 +167,13 @@ Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or mor
 5. **Suite and scans:** full Apex suite passes with 0 failures and org-wide coverage at or above 85%; no new High findings; ESLint and Prettier pass (the Husky hook enforces them).
 6. **Delivery:** own branch from `main`, reviewed before commit, merged and pushed after approval; plan updated.
 
+**STATUS 8b: DONE (2026-10-13) on our side, branch `feature/issue-8b-customer-site` (`5675d93`), deployed as `0Afg700000FBHcoCAH`.** Criterion 3 is recorded as not verifiable (see below); everything else passed.
+
+- **Checks:** full local Apex suite 115 tests, 0 failures; coverage 85.9% (`VehicleLoanController` 90%); 59 Jest tests; ESLint and Prettier clean; 0 High findings (one more accepted `ApexDoc`, see "Accepted analyzer findings").
+- **Site set-up (by you, in Experience Builder):** the **My Vehicle Claims** standard page holds `myVehicleClaims` and **Vehicle Loan**. The site already had Case object pages from its template, so Vehicle Loan was added to the existing **Case Detail** page (Case is not offered under New Page, Object Pages, when its pages already exist). The site was published.
+- **Live test (by you, logged in as Davy Jones):** both pages rendered; reserve gave a success toast and showed the active loan; return gave a success toast and the vehicle list came back. Org check afterwards: loan `VN-00010` (OPEL corsa, `6576JL09`) was created by Davy Jones, is linked to his most recent open claim **00001036** (not the claim page it was started from), has the entered mileage and engine capacity, and is now inactive with an end date of 2026-10-13.
+- **Criterion 3, not verifiable:** the "before" state was not recorded, and the remote state cannot be confirmed afterwards. `getVehicles` returns exactly 10 vehicles and its contents change independently of us: after the test, `6576JL09` was not listed, but neither was `4444MR21` (never touched here), and two vehicles appeared that we never touched. So `6576JL09` may be available but outside the 10 returned, or the remote service may not release a vehicle on a second POST. Asking the remote org's owner is not possible. No further POST was made. Parked as an open question (see "Parked").
+
 **Acceptance criteria for Issue 8b. Done when, all of these hold:**
 
 1. `vehicleLoanLWC.js-meta.xml` exposes `lightning__RecordPage`, `lightningCommunity__Page` and `lightningCommunity__Default`, with `recordId` available to the site page; Jest still passes; deploys cleanly.
@@ -280,7 +287,7 @@ The `check.sh` gate fails only on High (severity 2) or worse. The 2026-10-13 run
 7. ~~**Issue 9**~~ **DONE** (branch `chore/issue-9-sf-verify-hook`). Metadata query in user mode, all four gates PASS, Stop hook wired locally.
 8. ~~**Issue 7**~~ **DONE** (branch `fix/issue-7-remove-local-get-vehicles`). Option A: local `getVehicles()` removed.
 9. ~~**Issue 8a**~~ **DONE** (`be1f7c7`, `a128dc0`). Internal component; agent and admin views confirmed.
-10. **Issue 8b** (M). The site pages (My Vehicle Claims list, Case record page), View claim in the list, the component on the Case record page, then the live test.
+10. ~~**Issue 8b**~~ **DONE** on our side (`5675d93`). Site pages, View claim, per-Contact rule, live test passed; remote return behaviour parked.
 11. **Issue 10** (M). Customer Home tiles, after 8b.
 12. **Issue 11** (S). Case assignment Flow to before-save. It is independent of 8b and 10, so it can be done at any time.
 
@@ -309,10 +316,12 @@ Each remaining item gets its own branch from the current `main`, reviewed before
 - 2026-10-13: guests have no access to the customer site, so no guest-specific requirements are needed.
 - 2026-10-13: simplified loan rule. A customer with an open claim is eligible; a reservation is always linked to the Contact's most recent open claim; the component works per Contact (customers: their own; internal: the viewed Case's Contact, open or closed), so it can sit on My Vehicle Claims and on the Case record page; a return needs only an active loan. The same rule applies on the internal page.
 - 2026-10-13: analyzer review. The after-save Case assignment Flow becomes Issue 11; every other Moderate, Low and Info finding is accepted (see "Accepted analyzer findings").
-- **Pending:** none. Next is Issue 8b.
+- 2026-10-13: Issue 8b is accepted as done on our side. Its criterion 3 (remote vehicle back to its "before" state) is not verifiable, because the remote list is capped at 10 and changes independently, and the remote owner cannot be asked. The remote return behaviour is parked to investigate later.
+- **Pending:** none. Next is Issue 10 (or Issue 11 at any time).
 
 ## Parked (not scheduled)
 
+- **To investigate later (from 8b, 2026-10-13): does a second POST to `updateVehicle` release a vehicle in the remote org?** The requirements assume it does ("another successful POST represents cancellation"). After the live return of `6576JL09`, `getVehicles` no longer listed it, but that list is capped at 10 and changes independently of us, so the result proves nothing either way. Ways to find out without asking the remote owner: look for any remote endpoint or documentation that returns one vehicle's status or more than 10 vehicles; or, with your go-ahead, run a controlled reserve and return on a vehicle that is in the list, and check it before and after. Until then, a returned loan is treated as complete once the remote call returns 2xx.
 - The `Test.isRunningTest()` branch in `VehicleLoanApiClient.getOAuthSettings()` (line 182) lets tests inject settings. It pre-dates this work. Replacing it with injection is a possible cleanup.
 - Still uncovered in `VehicleLoanApiClient`: the vehicle-response `TypeException` catch (lines 38-41) and the OAuth-settings query lines (186-198, 215-221).
 - Four vault notes in `00 Inbox/` are waiting for your review (not part of the repo).
