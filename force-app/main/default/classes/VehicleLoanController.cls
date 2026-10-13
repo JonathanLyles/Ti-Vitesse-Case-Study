@@ -1,11 +1,13 @@
 /**
  * Loan operations are exposed only through methods that first authorize the
- * running user against the Case Contact. Queries and DML run in system mode so
- * portal users can use this narrowly scoped workflow without direct edit access.
+ * running user against the Case Contact, or confirm an internal user holds the
+ * Manage_All_Vehicle_Loans custom permission. Queries and DML run in system mode
+ * so portal users can use this narrowly scoped workflow without direct edit access.
  */
 public without sharing class VehicleLoanController {
   private static final String VEHICLE_CLAIMS_RECORD_TYPE = 'Vehicle_Claims';
   private static final String LOAN_VEHICLE_RECORD_TYPE = 'Loan_Vehicle';
+  private static final String MANAGE_ALL_PERMISSION = 'Manage_All_Vehicle_Loans';
   private static final String NOT_AUTHORIZED = 'You are not authorized to access this active vehicle claim.';
 
   @AuraEnabled
@@ -225,19 +227,25 @@ public without sharing class VehicleLoanController {
     Boolean isCustomer =
       currentUser.ContactId != null &&
       currentUser.ContactId == cases[0].ContactId;
-    Boolean isContactOwnerAgent = false;
+    Boolean isAuthorizedInternalUser = false;
 
+    // Portal users are never authorized by the custom permission.
     if (currentUser.ContactId == null && currentUser.UserType == 'Standard') {
-      Contact caseContact = [
-        SELECT OwnerId
-        FROM Contact
-        WHERE Id = :cases[0].ContactId
-        WITH SYSTEM_MODE
-      ];
-      isContactOwnerAgent = caseContact.OwnerId == currentUser.Id;
+      isAuthorizedInternalUser = FeatureManagement.checkPermission(
+        MANAGE_ALL_PERMISSION
+      );
+      if (!isAuthorizedInternalUser) {
+        Contact caseContact = [
+          SELECT OwnerId
+          FROM Contact
+          WHERE Id = :cases[0].ContactId
+          WITH SYSTEM_MODE
+        ];
+        isAuthorizedInternalUser = caseContact.OwnerId == currentUser.Id;
+      }
     }
 
-    if (!isCustomer && !isContactOwnerAgent) {
+    if (!isCustomer && !isAuthorizedInternalUser) {
       throw buildError(NOT_AUTHORIZED);
     }
 

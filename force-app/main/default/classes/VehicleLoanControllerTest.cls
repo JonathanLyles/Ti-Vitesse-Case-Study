@@ -8,6 +8,10 @@ private class VehicleLoanControllerTest {
     'vehicle.loan.admin@' +
     UserInfo.getOrganizationId() +
     '.test';
+  private static final String ADMIN_WITH_MANAGE_ALL_USERNAME =
+    'vehicle.loan.admin.manageall@' +
+    UserInfo.getOrganizationId() +
+    '.test';
   private static final String CUSTOMER_USERNAME =
     'vehicle.loan.customer@' +
     UserInfo.getOrganizationId() +
@@ -32,16 +36,36 @@ private class VehicleLoanControllerTest {
         [SELECT Id FROM Profile WHERE Name = 'System Administrator'].Id,
         ADMIN_USERNAME
       );
-      insert new List<User>{ agent, administrator };
-      insert new PermissionSetAssignment(
-        AssigneeId = agent.Id,
-        PermissionSetId = [
-          SELECT Id
-          FROM PermissionSet
-          WHERE Name = 'Vehicle_Loan_Internal_Access'
-        ]
-        .Id
+      User adminWithManageAll = buildUser(
+        [SELECT Id FROM Profile WHERE Name = 'System Administrator'].Id,
+        ADMIN_WITH_MANAGE_ALL_USERNAME
       );
+      insert new List<User>{ agent, administrator, adminWithManageAll };
+      Id internalAccessId = [
+        SELECT Id
+        FROM PermissionSet
+        WHERE Name = 'Vehicle_Loan_Internal_Access'
+      ]
+      .Id;
+      insert new List<PermissionSetAssignment>{
+        new PermissionSetAssignment(
+          AssigneeId = agent.Id,
+          PermissionSetId = internalAccessId
+        ),
+        new PermissionSetAssignment(
+          AssigneeId = adminWithManageAll.Id,
+          PermissionSetId = internalAccessId
+        ),
+        new PermissionSetAssignment(
+          AssigneeId = adminWithManageAll.Id,
+          PermissionSetId = [
+            SELECT Id
+            FROM PermissionSet
+            WHERE Name = 'Vehicle_Loan_Manage_All'
+          ]
+          .Id
+        )
+      };
     }
 
     Contact contact;
@@ -262,7 +286,7 @@ private class VehicleLoanControllerTest {
   }
 
   @IsTest
-  static void rejectsUserWhoDoesNotOwnCaseContactBeforeCallout() {
+  static void rejectsUserWithoutContactOwnershipOrManageAllPermissionBeforeCallout() {
     User administrator = [
       SELECT Id
       FROM User
@@ -275,6 +299,100 @@ private class VehicleLoanControllerTest {
     System.runAs(administrator) {
       try {
         VehicleLoanController.getLoanContext(vehicleCase.Id);
+      } catch (AuraHandledException error) {
+        message = error.getMessage();
+      }
+    }
+
+    Assert.areEqual(
+      'You are not authorized to access this active vehicle claim.',
+      message
+    );
+  }
+
+  @IsTest
+  static void loadsAvailableVehiclesForManageAllUserWhoDoesNotOwnContact() {
+    Case vehicleCase = getActiveCase();
+    Test.setMock(HttpCalloutMock.class, new LoanApiMock(200));
+
+    VehicleLoanContext context;
+    System.runAs(getAdminWithManageAll()) {
+      Test.startTest();
+      context = VehicleLoanController.getLoanContext(vehicleCase.Id);
+      Test.stopTest();
+    }
+
+    Assert.areEqual(1, context.availableVehicles.size());
+    Assert.areEqual('REG 123', context.availableVehicles[0].registrationNumber);
+    Assert.isNull(context.activeLoan);
+  }
+
+  @IsTest
+  static void manageAllUserCanReserveForContactTheyDoNotOwn() {
+    Case vehicleCase = getActiveCase();
+    LoanApiMock mock = new LoanApiMock(204);
+    Test.setMock(HttpCalloutMock.class, mock);
+
+    VehicleLoanActionResult result;
+    System.runAs(getAdminWithManageAll()) {
+      Test.startTest();
+      result = VehicleLoanController.reserveVehicle(
+        vehicleCase.Id,
+        'REG 123',
+        42000,
+        1600
+      );
+      Test.stopTest();
+    }
+
+    Assert.isTrue(result.remoteSucceeded);
+    Assert.isTrue(result.recordSaved, result.message);
+    Assert.areEqual(1, mock.reservationCount);
+    Vehicle__c savedLoan = [
+      SELECT Case__c, Contact__c, Loan_Active__c
+      FROM Vehicle__c
+      WHERE Contact__c = :vehicleCase.ContactId
+    ];
+    Assert.areEqual(vehicleCase.Id, savedLoan.Case__c);
+    Assert.isTrue(savedLoan.Loan_Active__c);
+  }
+
+  @IsTest
+  static void manageAllUserCanReturnLoanForContactTheyDoNotOwn() {
+    Case vehicleCase = getActiveCase();
+    Vehicle__c loan = createActiveLoan(vehicleCase, vehicleCase.ContactId);
+    Test.setMock(HttpCalloutMock.class, new LoanApiMock(200));
+
+    VehicleLoanActionResult result;
+    System.runAs(getAdminWithManageAll()) {
+      Test.startTest();
+      result = VehicleLoanController.returnVehicle(vehicleCase.Id, loan.Id);
+      Test.stopTest();
+    }
+
+    Assert.isTrue(result.remoteSucceeded);
+    Assert.isTrue(result.recordSaved);
+    Vehicle__c returnedLoan = [
+      SELECT Loan_Active__c, Loan_End_Date__c
+      FROM Vehicle__c
+      WHERE Id = :loan.Id
+    ];
+    Assert.isFalse(returnedLoan.Loan_Active__c);
+    Assert.areEqual(Date.today(), returnedLoan.Loan_End_Date__c);
+  }
+
+  @IsTest
+  static void rejectsManageAllUserForClosedCaseBeforeCallout() {
+    Case activeCase = getActiveCase();
+    Case closedCase = activeCase.clone(false, true, false, false);
+    closedCase.Status = 'Closed';
+    insert closedCase;
+    Test.setMock(HttpCalloutMock.class, new UnexpectedCalloutMock());
+
+    String message;
+    System.runAs(getAdminWithManageAll()) {
+      try {
+        VehicleLoanController.getLoanContext(closedCase.Id);
       } catch (AuraHandledException error) {
         message = error.getMessage();
       }
@@ -659,6 +777,14 @@ private class VehicleLoanControllerTest {
       SELECT Id
       FROM User
       WHERE Username = :AGENT_USERNAME
+    ];
+  }
+
+  private static User getAdminWithManageAll() {
+    return [
+      SELECT Id
+      FROM User
+      WHERE Username = :ADMIN_WITH_MANAGE_ALL_USERNAME
     ];
   }
 

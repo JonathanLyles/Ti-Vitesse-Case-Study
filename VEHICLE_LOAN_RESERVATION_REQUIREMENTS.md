@@ -27,7 +27,9 @@ reservation POST; the claim, Contact, dates, and other vehicle details shall
 not be sent.
 
 FR-5. An internal agent may book only for a Contact record that the agent owns
-(`Contact.OwnerId` matches the agent's user Id). An authenticated Experience
+(`Contact.OwnerId` matches the agent's user Id), unless the agent holds the
+`Manage_All_Vehicle_Loans` custom permission, in which case they may book for
+any Contact (for example, administrators or supervisors). An authenticated Experience
 Cloud customer may book only for the Contact record associated with their own
 user (`User.ContactId`). In either case, the Case must be linked to that same
 Contact. The operation shall verify these relationships using server-side
@@ -60,7 +62,8 @@ cancellation. This org shall clear the `Vehicle__c` Contact, Case, start date,
 and end date values for that booking.
 
 FR-11. Cancellation shall follow the same authorization rules as booking: an
-agent may cancel only for a Contact they own, and an authenticated customer may
+agent may cancel only for a Contact they own (or any Contact, with the
+`Manage_All_Vehicle_Loans` custom permission), and an authenticated customer may
 cancel only for the Contact associated with their own user. The booking's Case
 and Contact must match.
 
@@ -100,7 +103,9 @@ Apex, source-controlled metadata, or log records.
 
 NFR-2. The integration shall enforce caller authorization for both internal
 agents and Experience Cloud customers using the Contact owner relationship for
-agents and the running user's associated Contact for customers. A caller must
+agents (or the `Manage_All_Vehicle_Loans` custom permission for internal users
+who manage all loans) and the running user's associated Contact for customers.
+Customers are never authorized by the custom permission. A caller must
 not be able to book, cancel, or update another customer's vehicle by changing
 request identifiers.
 
