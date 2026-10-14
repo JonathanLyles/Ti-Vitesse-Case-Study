@@ -3,6 +3,7 @@ import VehicleLoanLWC from "c/vehicleLoanLWC";
 import getLoanContext from "@salesforce/apex/VehicleLoanController.getLoanContext";
 import reserveVehicle from "@salesforce/apex/VehicleLoanController.reserveVehicle";
 import returnVehicle from "@salesforce/apex/VehicleLoanController.returnVehicle";
+import { publishClaimSubmitted } from "c/claimEvents";
 
 jest.mock(
   "@salesforce/apex/VehicleLoanController.getLoanContext",
@@ -104,6 +105,16 @@ describe("c-vehicle-loan-lwc", () => {
 
     expect(getLoanContext).toHaveBeenCalledTimes(1);
     expect(getLoanContext).toHaveBeenCalledWith({ caseId: CASE_ID });
+  });
+
+  it("reloads the loan context after a claim is submitted", async () => {
+    getLoanContext.mockResolvedValue({ availableVehicles: [] });
+
+    await createComponent();
+    publishClaimSubmitted();
+    await flushPromises();
+
+    expect(getLoanContext).toHaveBeenCalledTimes(2);
   });
 
   it("shows a spinner while the context is loading", async () => {

@@ -3,6 +3,7 @@ import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import getLoanContext from "@salesforce/apex/VehicleLoanController.getLoanContext";
 import reserveVehicle from "@salesforce/apex/VehicleLoanController.reserveVehicle";
 import returnVehicle from "@salesforce/apex/VehicleLoanController.returnVehicle";
+import { subscribeToClaimSubmitted } from "c/claimEvents";
 
 const GENERIC_ERROR = "Something went wrong. Please try again.";
 const NO_ACCESS_ERROR =
@@ -19,9 +20,16 @@ export default class VehicleLoanLWC extends LightningElement {
   hasOpenClaim = false;
   claimCaseNumber;
   selectedVehicle;
+  unsubscribe;
 
   connectedCallback() {
     this.loadContext();
+    this.unsubscribe = subscribeToClaimSubmitted(() => this.loadContext());
+  }
+
+  disconnectedCallback() {
+    this.unsubscribe?.();
+    this.unsubscribe = undefined;
   }
 
   get hasActiveLoan() {
