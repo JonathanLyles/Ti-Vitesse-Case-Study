@@ -4,7 +4,7 @@ Problems found while cleaning up the Ti-Vitesse case study, with the fix, accept
 
 ## Context
 
-The cleanup left `main` deployable but with known loose ends. **Status as of 2026-10-13:** Issues 1, 2B, 2C (replaced by accept-and-document), 3, 4 (same), 5, 6, 7, 8a, 8b and 9 are done, and GitHub #5 (admin access) is fixed. Still open: Issue 10 (customer Home tiles); Issue 11 (Case assignment Flow) can be done at any time. This plan lists each issue, what to do, how big it is, and the order to tackle them. Each remaining item gets its own branch from `main`.
+The cleanup left `main` deployable but with known loose ends. **Status as of 2026-10-14:** Issues 1, 2B, 2C (replaced by accept-and-document), 3, 4 (same), 5, 6, 7, 8a, 8b, 9, and 10 are done, and GitHub #5 (admin access) is fixed. Still open: Issue 11 (Case assignment Flow). This plan lists each issue, what to do, how big it is, and the order to tackle them. Each remaining item gets its own branch from `main`.
 
 Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or more.
 
@@ -205,6 +205,11 @@ Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or mor
 - **Reuse:** `c/claimEvents`; `myVehicleClaims.js` subscription and request-ordering pattern; the existing `VehicleLoanController.getLoanContext()` authorization and eligibility logic.
 - **Effort:** M.
 
+**STATUS: DONE (2026-10-14).**
+
+- **Delivery:** My Open Claims was delivered in PR #10; the Vehicle Loan refresh was delivered in PR #11. Both are merged to `main` and deployed to `CGICaseStudy`.
+- **Verification:** the `sf-verify` Apex, LWC, static-analysis, and tests-not-weakened gates passed. As a real customer, the My Open Claims tile opened the claims page, and submitting a first claim refreshed Vehicle Loan from its no-open-claim message to available vehicles without a page reload.
+
 **Acceptance criteria for Issue 10. Done when, all of these hold:**
 
 1. **Requirements settled:** the Issue 10 open decisions in `VEHICLE_LOAN_LWC_REQUIREMENTS.md` are decided with you and recorded before building.
@@ -314,7 +319,7 @@ Each remaining item gets its own branch from the current `main`, reviewed before
 - 2026-10-13: simplified loan rule. A customer with an open claim is eligible; a reservation is always linked to the Contact's most recent open claim; the component works per Contact (customers: their own; internal: the viewed Case's Contact, open or closed), so it can sit on My Vehicle Claims and on the Case record page; a return needs only an active loan. The same rule applies on the internal page.
 - 2026-10-13: analyzer review. The after-save Case assignment Flow becomes Issue 11; every other Moderate, Low and Info finding is accepted (see "Accepted analyzer findings").
 - 2026-10-13: Issue 8b is accepted as done on our side. Its criterion 3 (remote vehicle back to its "before" state) is not verifiable, because the remote list is capped at 10 and changes independently, and the remote owner cannot be asked. The remote return behaviour is parked to investigate later.
-- **Pending:** none. Next is Issue 10 (or Issue 11 at any time).
+- **Pending:** none. Next is Issue 11.
 
 ## Parked (not scheduled)
 
@@ -339,6 +344,6 @@ Each remaining item gets its own branch from the current `main`, reviewed before
 - **Issue 7:** the grep for `VehicleLoanController.getVehicles` finds nothing (if A); full suite 0 failures.
 - **Issue 8a:** `npm run test:unit` passes; the component appears on the internal Case record page.
 - **Issue 8b:** real customer login completes reserve and return, and the remote vehicle returns to its recorded "before" state.
-- **Issue 10:** Jest and Apex tests for tile visibility and eligibility pass; a real customer sees the tiles behave as described on Home.
+- **Issue 10:** DONE (2026-10-14). The My Open Claims tile and Vehicle Loan refresh are merged, deployed, and live-verified.
 - **Issue 11:** the owner-assignment Apex test passes before and after the change; `flow:SameRecordUpdate` no longer reported.
 - **Every issue:** full `RunLocalTests` 0 failures, org-wide coverage at or above 85%, no new High findings, and a diff you reviewed before commit.
