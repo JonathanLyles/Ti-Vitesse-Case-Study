@@ -189,35 +189,32 @@ Effort scale: **S** under 30 min, **M** about 1-2 hours, **L** a half day or mor
 8. **Suite and scans:** full Apex suite 0 failures, coverage at or above 85%, no new High findings.
 9. **Delivery:** own branch from `main`, reviewed before commit, merged and pushed after approval; plan updated.
 
-### 10. Customer Home tiles: My open claims and Loan a vehicle (added 2026-10-13, after 8b)
+### 10. Customer Home journey: My open claims and Vehicle Loan refresh (updated 2026-10-14, after 8b)
 
-- **Summary:** on the Home page of TI Vitesse Insurance Ltd, the customer can submit a claim (`createVehicleClaim`) but has no direct way to reach their claims or a loan vehicle. You want two tiles: **My open claims**, and **Loan a vehicle**, which appears only when the customer has an open claim and no active loan. Requirements: `VEHICLE_LOAN_LWC_REQUIREMENTS.md` FR-18 to FR-22 and US-5.
-- **Depends on 8b:** the Loan tile leads to a claim's **Case record page**, where `vehicleLoanLWC` (placed in 8b) shows the vehicles and Reserve. The customer sees and returns an active loan on any of their open claims' pages (8b's return-from-any-claim change).
-- **Rules decided with you:**
-  - Per-Contact loan rule, the same as the internal page: one active loan per Contact across all claims.
-  - The Loan tile is hidden while any loan is active.
-  - With several open claims, the tile goes to the **most recently submitted** one (latest `CreatedDate`), with no choice step.
+- **Summary:** on the Home page of TI Vitesse Insurance Ltd, the customer can submit a claim but has no direct way to reach their claims. The existing `vehicleLoanLWC` is already placed on Home and My Vehicle Claims; it works per Contact without a Case Id. Issue 10 adds a **My open claims** tile and refreshes the existing Vehicle Loan component after a successful Home claim submission. Requirements: `VEHICLE_LOAN_LWC_REQUIREMENTS.md` FR-18 to FR-22 and US-5.
+- **Depends on 8b:** `vehicleLoanLWC` is already present on My Vehicle Claims and operates per Contact. It shows a no-open-claim message until the customer has an open claim, available vehicles when eligible, and an active loan with Return when applicable.
+- **Rules decided with you (2026-10-14):**
+  - **My open claims** always appears for authenticated customers and opens `My_Vehicle_Claims__c`, which shows all claims.
+  - Do not create a separate **Loan a vehicle** navigation tile. Keep the existing Vehicle Loan component and its no-open-claim message.
+  - After a successful claim submission, Vehicle Loan refreshes without a page reload and shows available vehicles when the customer becomes eligible.
   - Guests have no access to the site, so there is no guest case to handle.
-- **Proposed solution (to be designed at the start of the issue):**
-  - A new LWC for Home with the two tiles.
-  - A read-only Apex method returns whether the customer has an open claim, the Id of the most recent one, and whether the Contact has an active loan, all worked out server-side from the running user.
-  - Navigation goes to the Case record page with `NavigationMixin`.
-  - It refreshes on `c/claimEvents` `subscribeToClaimSubmitted`, the same pattern as `myVehicleClaims`.
-  - The open decisions are listed in the requirements' Open Decisions.
-- **Reuse:** `CustomerClaimsController.getMyClaims()` (user-mode claims query, newest first); `VehicleLoanController.getActiveLoans(contactId)` (per-Contact active-loan query, private today); `c/claimEvents`; the request ordering in `myVehicleClaims.js`.
+- **Proposed solution:**
+  - A small Home LWC renders the **My open claims** tile and navigates to `My_Vehicle_Claims__c` with `NavigationMixin`.
+  - `vehicleLoanLWC` subscribes to `c/claimEvents` `subscribeToClaimSubmitted` and reloads its existing context; it unsubscribes when disconnected.
+  - No new eligibility Apex method is needed: `VehicleLoanController.getLoanContext()` already derives eligibility from the running user's Contact.
+- **Reuse:** `c/claimEvents`; `myVehicleClaims.js` subscription and request-ordering pattern; the existing `VehicleLoanController.getLoanContext()` authorization and eligibility logic.
 - **Effort:** M.
 
 **Acceptance criteria for Issue 10. Done when, all of these hold:**
 
 1. **Requirements settled:** the Issue 10 open decisions in `VEHICLE_LOAN_LWC_REQUIREMENTS.md` are decided with you and recorded before building.
 2. **Tile visibility (Jest and Apex tests):**
-   - no open claim → no Loan tile;
-   - an open claim and no active loan → Loan tile shown;
-   - an active loan on any claim → no Loan tile.
-3. **Server-side eligibility:** the Apex method derives everything from the running user's Contact and accepts no Contact or Case Id from the browser. It has tests for: customer with no claims; open claim with no loan; active loan; closed claims only; another customer's data is never returned; internal user (no Contact).
-4. **Navigation:** the Loan tile opens the Case record page of the customer's most recently submitted open claim (Apex test with two open claims checks the newest is chosen). My open claims opens the agreed list. Jest asserts the navigation targets.
-5. **Refresh:** submitting a first claim on Home makes the Loan tile appear without a page reload (Jest, through `claimEvents`).
-6. **Live check on the site:** as a real customer, the tiles appear as described, the Loan tile leads to the claim page with the vehicle list, and after a reservation (done under 8b's safeguards, or none if you prefer) the Loan tile is gone.
+   - **My open claims** is always shown;
+   - the existing Vehicle Loan component retains its no-open-claim, available-vehicle, and active-loan states.
+3. **Server-side eligibility:** Vehicle Loan continues to derive eligibility from the running user's Contact, with no Contact or Case Id from the browser on Home. Its existing Apex tests continue to cover no claims, open claims, active loans, closed claims, data isolation, and internal users.
+4. **Navigation:** My open claims opens `My_Vehicle_Claims__c`. Jest asserts the navigation target.
+5. **Refresh:** submitting a first claim on Home reloads the existing Vehicle Loan context without a page reload and makes available vehicles appear (Jest, through `claimEvents`).
+6. **Live check on the site:** as a real customer, My open claims opens the claims page; Vehicle Loan initially shows its no-open-claim message, then refreshes after a submitted claim; and the available-vehicle and active-loan states remain correct.
 7. **No secrets; suite and scans:** full Apex suite 0 failures, coverage at or above 85%, no new High findings, ESLint and Prettier pass.
 8. **Delivery:** own branch from `main`, reviewed before commit, merged and pushed after approval; plan updated.
 
@@ -309,9 +306,9 @@ Each remaining item gets its own branch from the current `main`, reviewed before
 - 2026-10-13: GitHub #5. The requirements only let the customer or the Contact-owning agent use the loan component, so administrators were blocked on cases they did not own. The requirements now add a `Manage_All_Vehicle_Loans` custom permission (granted by the `Vehicle_Loan_Manage_All` permission set). Holders can view, reserve and return loans on any qualifying Case. Portal users never get this bypass.
 - 2026-10-13: Issue 8a is closed; the final `check.sh` run on `main` passed (113 Apex tests, 85% coverage, 54 Jest tests, 0 High).
 - 2026-10-13: the customer site is TI Vitesse Insurance Ltd (`/customers`). 8b places the loan component on its Case record page. My Vehicle Claims is a separate standard list page; its View claim button opens the Case record page, and the inline expand stays.
-- 2026-10-13: 8b is done before the Home tiles (new Issue 10), because the Loan tile leads to the page 8b sets up.
+- 2026-10-13: 8b is done before the Home journey work (Issue 10), which reuses its My Vehicle Claims page and Vehicle Loan component.
 - 2026-10-13: the customer site uses the same per-Contact loan rule as the internal page (one active loan per Contact across all claims). No backend rule change.
-- 2026-10-13: the Loan a vehicle tile goes to the Case record page of the customer's most recently submitted open claim (no choice step), and is hidden while a loan is active.
+- 2026-10-14: Issue 10 does not need a separate Loan a vehicle tile. The existing Vehicle Loan component stays on Home and My Vehicle Claims, retains its no-open-claim message, and refreshes after Home claim submission. My open claims opens `My_Vehicle_Claims__c`, which shows all claims.
 - 2026-10-13: an active loan can be returned from the page of any of the Contact's open claims, not only the claim it was reserved on (customer and internal pages alike). This is a controller and test change, done in 8b.
 - 2026-10-13: guests have no access to the customer site, so no guest-specific requirements are needed.
 - 2026-10-13: simplified loan rule. A customer with an open claim is eligible; a reservation is always linked to the Contact's most recent open claim; the component works per Contact (customers: their own; internal: the viewed Case's Contact, open or closed), so it can sit on My Vehicle Claims and on the Case record page; a return needs only an active loan. The same rule applies on the internal page.
