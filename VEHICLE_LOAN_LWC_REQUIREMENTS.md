@@ -121,29 +121,26 @@ message that allows the user to retry.
 ### Customer site Home tiles
 
 FR-18. The Home page of the customer site shall show a **My open claims** tile
-to an authenticated customer. Selecting it shall show the customer's open (not
-closed) `Vehicle_Claims` Cases (see Open Decisions for where the list appears).
+to an authenticated customer. Selecting it shall open the **My Vehicle Claims**
+page (`My_Vehicle_Claims__c`), which shows all of the customer's claims.
 
-FR-19. The Home page shall show a **Loan a vehicle** tile only when both are
-true: the customer has at least one open `Vehicle_Claims` Case, and the
-customer's Contact has no active vehicle loan on any Case. This is the same
-one-active-loan-per-Contact rule the component and the internal page use. While
-a loan is active the tile shall not be shown; the customer sees and returns the
-loan on the Case record page of any of their open claims (FR-14, FR-15).
+FR-19. The existing **Vehicle Loan** component shall remain on the Home page
+and the **My Vehicle Claims** page. It shall derive eligibility from the running
+user's Contact, use the one-active-loan-per-Contact rule, and continue to show
+its existing message when the customer has no open `Vehicle_Claims` Case.
 
-FR-20. Selecting **Loan a vehicle** shall take the customer to the Case record
-page of their most recently submitted open `Vehicle_Claims` Case
-(latest `CreatedDate`), where the component shows the available vehicles and
-the Reserve action. No claim choice is offered.
+FR-20. No separate **Loan a vehicle** navigation tile shall be created. When
+the customer has an open claim and no active vehicle loan, the Vehicle Loan
+component shall show the available vehicles and Reserve action on either page.
 
-FR-21. Tile visibility shall be decided on the server from the running user's
-Contact. The browser shall not supply Contact or Case identifiers for this
-decision. Tile visibility is only a convenience: every loan operation still
-performs the full authorization and eligibility checks in NFR-1.
+FR-21. The browser shall not supply a Contact or Case identifier to decide
+Vehicle Loan eligibility on a non-record page. Every loan operation shall
+continue to perform the full authorization and eligibility checks in NFR-1.
 
 FR-22. When the customer submits a claim on the Home page, the tiles shall
-refresh without a page reload, so a customer's first open claim makes the
-**Loan a vehicle** tile appear.
+refresh without a page reload: the existing Vehicle Loan component shall reload
+its context, so a customer's first open claim replaces the no-open-claim message
+with available vehicles.
 
 Guests (unauthenticated visitors) have no access to the site, so the tiles are
 only ever shown to authenticated customers.
@@ -292,25 +289,24 @@ loan can be marked complete while its record remains available for history.
 ### US-5: Reach my claims and a loan vehicle from the Home page
 
 As an authenticated customer on the site's Home page, I want tiles for my open
-claims and for loaning a vehicle so that I can reach them without searching the
-site.
+claims and an up-to-date vehicle-loan experience so that I can reach my claims
+and reserve a vehicle without searching the site.
 
 **Acceptance criteria**
 
 - Given I have no open `Vehicle_Claims` Case, when I open Home, then I see the
-  **My open claims** tile and no **Loan a vehicle** tile.
+  **My open claims** tile and the Vehicle Loan component's no-open-claim
+  message.
 - Given I have an open claim and my Contact has no active loan, when I open
-  Home, then I see the **Loan a vehicle** tile. Selecting it takes me to that
-  claim's Case record page, where I see the available vehicles.
+  Home, then I see the Vehicle Loan component's available vehicles and can
+  reserve one.
 - Given my Contact has an active loan on any claim, when I open Home, then I do
-  not see the **Loan a vehicle** tile. On the page of any of my open claims I
-  see the loan with a Return action.
-- Given I have more than one open claim and no active loan, when I select
-  **Loan a vehicle**, then I am taken to my most recently submitted open
-  claim's page.
-- Given I had no open claim, when I submit a claim on Home, then the
-  **Loan a vehicle** tile appears without reloading the page.
-- Given I select **My open claims**, then I see only my own open claims.
+  not see available vehicles. On Home and the My Vehicle Claims page, I see the
+  loan with a Return action.
+- Given I submit my first claim on Home, when the submission succeeds, then
+  the Vehicle Loan component refreshes without a page reload and shows the
+  available vehicles.
+- Given I select **My open claims**, then I see all and only my own claims.
 
 ## Assumptions
 
@@ -395,10 +391,10 @@ site.
   The controller reports remote success separately and blocks another action
   in the current component session, but no durable recovery workflow is
   specified.
-- Home tiles (FR-18 to FR-22), to settle when that work starts:
-  - Where **My open claims** shows the list: a list on Home itself, a separate
-    list page, or the existing `myVehicleClaims` list limited to open claims.
-  - Whether the two tiles are one new component or two.
-  - Which controller supplies tile eligibility: a new read-only method beside
-    `CustomerClaimsController.getMyClaims()`, or one in
-    `VehicleLoanController` that reuses its per-Contact active-loan query.
+- Home journey (FR-18 to FR-22), decided 2026-10-14:
+  - **My open claims** opens `My_Vehicle_Claims__c`, which shows all claims.
+  - The existing Vehicle Loan component remains on Home and My Vehicle Claims;
+    no separate Loan navigation tile is needed.
+  - Vehicle Loan continues to obtain eligibility from
+    `VehicleLoanController.getLoanContext()` and refreshes after a claim is
+    submitted on Home.
