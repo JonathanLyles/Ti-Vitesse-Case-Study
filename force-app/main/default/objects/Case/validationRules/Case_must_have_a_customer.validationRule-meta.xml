@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Case_must_have_a_customer</fullName>
+    <active>true</active>
+    <description
+  >This validation rule checks if a case has a related customer and prevents the case from being saved without one.</description>
+    <errorConditionFormula>ISNULL( Contact.Id )</errorConditionFormula>
+    <errorMessage>A case requires a related contact.</errorMessage>
+</ValidationRule>

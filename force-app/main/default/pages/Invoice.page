@@ -1,0 +1,30 @@
+<apex:page standardController="Invoice__c" renderAs="PDF">
+  <apex:image
+    id="logo"
+    value="{!$Resource.Ti_Vitesse_Logo}"
+    width="200"
+    height="100"
+    alt="Ti Vitesse Logo"
+  />
+  <br />
+  <div id="top">
+    <span id="header">Invoice Number: {!Invoice__c.Name}</span>
+    <br />
+    <span id="agent">Agent: {!Invoice__c.Account__r.Name}</span>
+    <br />
+    <span id="customer">Customer: {!Invoice__c.Contact__r.Name}</span>
+    <br />
+    <span id="date">Invoice date: {!Invoice__c.Invoice_Date__c}</span>
+  </div>
+  <div id="body">
+    <span id="amountWithoutVAT">
+      Amount: ${!Invoice__c.Amount_without_VAT__c}</span
+    >
+    <br />
+    <span id="Vat"> VAT: ${!Invoice__c.VAT__c}</span>
+    <br />
+    <span id="amountWithVat">
+      Amount with VAT: ${!Invoice__c.Amount_with_VAT__c}</span
+    >
+  </div>
+</apex:page>

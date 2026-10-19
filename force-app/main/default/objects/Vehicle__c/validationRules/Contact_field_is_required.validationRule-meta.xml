@@ -5,6 +5,6 @@
     <description
   >Checks if a damaged vehicle has a contact. Does not apply to loan vehicles.</description>
     <errorConditionFormula
-  >AND( RecordType.DeveloperName = 'Damaged_Vehicle', ISBLANK( Contact__c ) )</errorConditionFormula>
+  >AND( RecordType.DeveloperName = &apos;Damaged_Vehicle&apos;, ISBLANK( Contact__c ) )</errorConditionFormula>
     <errorMessage>Contact is required</errorMessage>
 </ValidationRule>

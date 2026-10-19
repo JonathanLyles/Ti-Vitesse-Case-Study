@@ -113,7 +113,8 @@
                 <identifier>c_vehicleLoanLWC</identifier>
                 <visibilityRule>
                     <criteria>
-                        <leftValue>{!Record.RecordType.DeveloperName}</leftValue>
+                        <leftValue
+            >{!Record.RecordType.DeveloperName}</leftValue>
                         <operator>EQUAL</operator>
                         <rightValue>Vehicle_Claims</rightValue>
                     </criteria>
