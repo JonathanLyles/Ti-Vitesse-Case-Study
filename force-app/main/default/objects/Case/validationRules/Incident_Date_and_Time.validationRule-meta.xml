@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Incident_Date_and_Time</fullName>
+    <active>true</active>
+    <description
+  >This validation checks if the Date_and_Time_of_Incident__c field is greater than the current time. If it is an the field cannot be saved.</description>
+    <errorConditionFormula
+  >Date_and_Time_of_Incident__c   &gt;  CreatedDate</errorConditionFormula>
+    <errorMessage
+  >The incident date of the claim cannot be created in the future</errorMessage>
+</ValidationRule>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CompactLayout xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>TVI_Agents</fullName>
+    <fields>Name</fields>
+    <fields>Phone</fields>
+    <fields>Mobile__c</fields>
+    <fields>Email__c</fields>
+    <fields>BillingAddress</fields>
+    <fields>Commission_Rate__c</fields>
+    <fields>Monthly_Commission__c</fields>
+    <fields>Active__c</fields>
+    <label>TVI Agents</label>
+</CompactLayout>

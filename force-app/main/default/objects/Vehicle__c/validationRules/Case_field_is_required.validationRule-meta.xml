@@ -5,6 +5,6 @@
     <description
   >Checks if a damaged vehicle has a case. Does not apply to loan vehicles.</description>
     <errorConditionFormula
-  >AND( RecordType.DeveloperName = 'Damaged_Vehicle', ISBLANK( Case__c ) )</errorConditionFormula>
+  >AND( RecordType.DeveloperName = &apos;Damaged_Vehicle&apos;, ISBLANK( Case__c ) )</errorConditionFormula>
     <errorMessage>Vehicle must have a case</errorMessage>
 </ValidationRule>

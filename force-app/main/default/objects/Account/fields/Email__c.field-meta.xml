@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Email__c</fullName>
+    <caseSensitive>true</caseSensitive>
+    <description>The agent&apos;s email address</description>
+    <externalId>false</externalId>
+    <inlineHelpText>Please enter the agent&apos;s email addres</inlineHelpText>
+    <label>Email</label>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <type>Email</type>
+    <unique>true</unique>
+</CustomField>
